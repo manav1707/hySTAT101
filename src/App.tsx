@@ -1,26 +1,37 @@
 import { useState, useEffect, useRef, memo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from "recharts";
+import {
+  Flame, Dumbbell, Zap, Activity, AlertTriangle, Mic, Hand, BarChart3,
+  Trash2, Award, Trophy, Check, Clipboard, Pin, CheckCircle2, MessageCircle,
+  RefreshCw, Target, FlaskConical, Lightbulb, Calendar, Moon, Sun,
+  Footprints, Wind, Droplet, Snowflake, Apple, HeartPulse,
+} from "lucide-react";
 
-const FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Helvetica Neue", Arial, sans-serif';
+const Icon = ({ C, size = 16, color, style, className }: { C: any; size?: number; color?: string; style?: React.CSSProperties; className?: string }) => (
+  <C size={size} strokeWidth={1.75} color={color} className={className} style={{ display: 'inline-block', verticalAlign: 'middle', ...style }} />
+);
 
-// Gradient palette — vibrant, modern
+const FONT = '"Space Grotesk", "Manrope", -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif';
+
+// Carbon + Lime palette — softened lime accent on carbon-dark surfaces
 const GRAD = {
-  orange: 'linear-gradient(135deg, #FF6B35 0%, #E8451B 100%)',
-  orangeGlow: 'linear-gradient(135deg, #FF8F5E 0%, #FF6B35 50%, #E8451B 100%)',
-  purple: 'linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%)',
-  pink: 'linear-gradient(135deg, #F472B6 0%, #DB2777 100%)',
-  blue: 'linear-gradient(135deg, #60A5FA 0%, #2563EB 100%)',
-  green: 'linear-gradient(135deg, #34D399 0%, #059669 100%)',
-  amber: 'linear-gradient(135deg, #FBBF24 0%, #D97706 100%)',
-  red: 'linear-gradient(135deg, #F87171 0%, #DC2626 100%)',
-  teal: 'linear-gradient(135deg, #22D3EE 0%, #0891B2 100%)',
-  lime: 'linear-gradient(135deg, #A3E635 0%, #65A30D 100%)',
-  darkHero: 'linear-gradient(135deg, #1a1a2e 0%, #0f0f1e 50%, #16213e 100%)',
-  lightHero: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
+  orange: 'linear-gradient(135deg, #A3E635 0%, #84CC16 100%)',
+  orangeGlow: 'linear-gradient(135deg, #BEF264 0%, #84CC16 50%, #65A30D 100%)',
+  purple: 'linear-gradient(135deg, #6B6B6B 0%, #3A3A3A 100%)',
+  pink: 'linear-gradient(135deg, #737373 0%, #404040 100%)',
+  blue: 'linear-gradient(135deg, #5E5E5E 0%, #2A2A2A 100%)',
+  green: 'linear-gradient(135deg, #A3E635 0%, #84CC16 100%)',
+  amber: 'linear-gradient(135deg, #B0B0B0 0%, #6B6B6B 100%)',
+  red: 'linear-gradient(135deg, #525252 0%, #1F1F1F 100%)',
+  teal: 'linear-gradient(135deg, #8A8A8A 0%, #525252 100%)',
+  lime: 'linear-gradient(135deg, #A3E635 0%, #84CC16 100%)',
+  darkHero: 'linear-gradient(135deg, #161616 0%, #050505 50%, #1F1F1F 100%)',
+  lightHero: 'linear-gradient(135deg, #1A1A1A 0%, #0E0E0E 100%)',
 };
 
-const ACC = '#E8451B';
-const ACC_BRIGHT = '#FF6B35';
+const ACC = '#84CC16';
+const ACC_BRIGHT = '#A3E635';
+const GRAD_LIGHT = 'linear-gradient(135deg, #BEF264 0%, #84CC16 100%)';
 
 // Inject global hover/active styles for buttons
 if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-styles')) {
@@ -52,10 +63,52 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
       border-color: ${ACC} !important;
       box-shadow: 0 0 0 3px ${ACC}20 !important;
     }
+    /* Hide native number-input spinners — cleaner look */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    /* Subtle boomerang-style icon animations: go and return symmetrically */
+    @keyframes hyrox-wave {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-14deg); }
+      75% { transform: rotate(14deg); }
+    }
+    @keyframes hyrox-flicker {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+    @keyframes hyrox-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    @keyframes hyrox-spin-soft {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(20deg); }
+    }
+    .anim-wave { animation: hyrox-wave 1.6s ease-in-out 1; transform-origin: 70% 70%; display: inline-block; }
+    .anim-flicker { animation: hyrox-flicker 1.8s ease-in-out infinite; display: inline-block; }
+    .anim-bounce { animation: hyrox-bounce 1.6s ease-in-out infinite; display: inline-block; }
+    .anim-spin-soft { animation: hyrox-spin-soft 3s ease-in-out infinite; display: inline-block; }
+    @media (prefers-reduced-motion: reduce) {
+      .anim-wave, .anim-flicker, .anim-bounce, .anim-spin-soft { animation: none; }
+    }
+    /* Typography polish — antialiasing + balanced weights */
+    html, body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    body { background: #0E0E0E; }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
@@ -65,14 +118,14 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
 }
 
 const STATIONS = [
-  { id: 'skierg', name: 'SkiErg', desc: '1000m', abbr: 'SKI', color: '#2563EB', bright: '#60A5FA', grad: GRAD.blue, hasWeight: false, target: 1000, unit: 'm' },
-  { id: 'sledPush', name: 'Sled Push', desc: '50m', abbr: 'SP', color: '#7C3AED', bright: '#A78BFA', grad: GRAD.purple, hasWeight: true, target: 50, unit: 'm' },
-  { id: 'sledPull', name: 'Sled Pull', desc: '50m', abbr: 'SL', color: '#DB2777', bright: '#F472B6', grad: GRAD.pink, hasWeight: true, target: 50, unit: 'm' },
-  { id: 'burpee', name: 'Burpee BJ', desc: '80m', abbr: 'BBJ', color: '#D97706', bright: '#FBBF24', grad: GRAD.amber, hasWeight: false, target: 80, unit: 'm' },
-  { id: 'rowing', name: 'Rowing', desc: '1000m', abbr: 'ROW', color: '#059669', bright: '#34D399', grad: GRAD.green, hasWeight: false, target: 1000, unit: 'm' },
-  { id: 'farmers', name: 'Farmers Carry', desc: '200m', abbr: 'FC', color: '#DC2626', bright: '#F87171', grad: GRAD.red, hasWeight: true, target: 200, unit: 'm' },
-  { id: 'lunges', name: 'Sandbag Lunges', desc: '100m', abbr: 'SBL', color: '#0891B2', bright: '#22D3EE', grad: GRAD.teal, hasWeight: true, target: 100, unit: 'm' },
-  { id: 'wallballs', name: 'Wall Balls', desc: '100 reps', abbr: 'WB', color: '#65A30D', bright: '#A3E635', grad: GRAD.lime, hasWeight: true, target: 100, unit: 'reps' },
+  { id: 'skierg', name: 'SkiErg', desc: '1000m', abbr: 'SKI', color: '#A3E635', bright: '#BEF264', grad: GRAD.blue, hasWeight: false, target: 1000, unit: 'm' },
+  { id: 'sledPush', name: 'Sled Push', desc: '50m', abbr: 'SP', color: '#FAFAFA', bright: '#FFFFFF', grad: GRAD.purple, hasWeight: true, target: 50, unit: 'm' },
+  { id: 'sledPull', name: 'Sled Pull', desc: '50m', abbr: 'SL', color: '#E5E5E5', bright: '#FAFAFA', grad: GRAD.pink, hasWeight: true, target: 50, unit: 'm' },
+  { id: 'burpee', name: 'Burpee BJ', desc: '80m', abbr: 'BBJ', color: '#D4D4D4', bright: '#FAFAFA', grad: GRAD.amber, hasWeight: false, target: 80, unit: 'm' },
+  { id: 'rowing', name: 'Rowing', desc: '1000m', abbr: 'ROW', color: '#A3E635', bright: '#BEF264', grad: GRAD.green, hasWeight: false, target: 1000, unit: 'm' },
+  { id: 'farmers', name: 'Farmers Carry', desc: '200m', abbr: 'FC', color: '#A3A3A3', bright: '#D4D4D4', grad: GRAD.red, hasWeight: true, target: 200, unit: 'm' },
+  { id: 'lunges', name: 'Sandbag Lunges', desc: '100m', abbr: 'SBL', color: '#FAFAFA', bright: '#FFFFFF', grad: GRAD.teal, hasWeight: true, target: 100, unit: 'm' },
+  { id: 'wallballs', name: 'Wall Balls', desc: '100 reps', abbr: 'WB', color: '#BEF264', bright: '#A3E635', grad: GRAD.lime, hasWeight: true, target: 100, unit: 'reps' },
 ];
 
 const PRESET_EVENTS = [
@@ -215,35 +268,21 @@ function parseMMSS(str) {
 
 function genUserId() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
 
-// Theme
-const THEMES = {
-  light: {
-    bg: '#FAFAFA', bgSolid: '#FAFAFA',
-    surface: '#fff', surfaceAlt: '#F4F4F5', card: '#fff',
-    border: '#E4E4E7', borderInput: '#D4D4D8',
-    text: '#09090B', textSec: '#71717A', textMute: '#3F3F46',
-    headerBg: '#09090B',
-    tabBg: '#fff',
-    inputBg: '#fff',
-    cardShadow: '0 1px 2px rgba(0,0,0,0.04)',
-    cardShadowHover: '0 4px 12px rgba(0,0,0,0.06)',
-    heroShadow: '0 4px 16px rgba(0,0,0,0.06)',
-    glassBlur: 'blur(12px) saturate(120%)',
-  },
-  dark: {
-    bg: '#0A0A0B', bgSolid: '#0A0A0B',
-    surface: '#18181B', surfaceAlt: '#27272A', card: '#18181B',
-    border: '#27272A', borderInput: '#3F3F46',
-    text: '#FAFAFA', textSec: '#A1A1AA', textMute: '#D4D4D8',
-    headerBg: '#000',
-    tabBg: '#0A0A0B',
-    inputBg: '#18181B',
-    cardShadow: '0 1px 2px rgba(0,0,0,0.2)',
-    cardShadowHover: '0 4px 12px rgba(0,0,0,0.3)',
-    heroShadow: '0 4px 16px rgba(0,0,0,0.3)',
-    glassBlur: 'blur(12px) saturate(120%)',
-  },
+// Single theme — Carbon + Lime (dark-first)
+const CARBON_THEME = {
+  bg: '#0E0E0E', bgSolid: '#0E0E0E',
+  surface: '#1A1A1A', surfaceAlt: '#222222', card: '#1A1A1A',
+  border: '#2A2A2A', borderInput: '#3A3A3A',
+  text: '#FAFAFA', textSec: '#A3A3A3', textMute: '#D4D4D4',
+  headerBg: '#000000',
+  tabBg: '#0E0E0E',
+  inputBg: '#1A1A1A',
+  cardShadow: '0 1px 2px rgba(0,0,0,0.4)',
+  cardShadowHover: '0 4px 12px rgba(0,0,0,0.5)',
+  heroShadow: '0 8px 24px rgba(0,0,0,0.6)',
+  glassBlur: 'blur(12px) saturate(120%)',
 };
+const THEMES = { light: CARBON_THEME, dark: CARBON_THEME };
 
 let currentTheme = 'light';
 const themeSubscribers = new Set();
@@ -289,8 +328,8 @@ function StatCard({ label, value, sub, icon, grad }) {
 function SectionTitle({ children, action, accent }) {
   const { t } = useTheme();
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16, paddingLeft: 2 }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: t.text, letterSpacing: -0.6, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 22, marginTop: 8, paddingLeft: 2 }}>
+      <div style={{ fontSize: 21, fontWeight: 700, color: t.text, letterSpacing: '-0.02em', display: 'flex', alignItems: 'baseline', gap: 12 }}>
         {accent && <span style={{ width: 4, height: 18, borderRadius: 2, background: accent, display: 'inline-block', transform: 'translateY(2px)' }} />}
         {children}
       </div>
@@ -381,7 +420,7 @@ const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding })
           <div style={{ position: 'absolute', top: -50, right: -50, width: 200, height: 200, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(60px)', opacity: 0.4 }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC_BRIGHT, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Welcome to Hyrox</div>
-            <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 10, letterSpacing: -0.8 }}>Let's build your plan 🔥</div>
+            <div style={{ fontSize: 26, fontWeight: 800, marginBottom: 10, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 10 }}>Let's build your plan <Icon C={Flame} size={22} /></div>
             <div style={{ fontSize: 15, color: '#c7c7d0', lineHeight: 1.5 }}>Tell us about yourself so we can tailor training, recovery, and race day prep.</div>
           </div>
         </div>
@@ -414,7 +453,11 @@ const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding })
           <Seg value={level} onChange={setLevel} options={[{ v: 'beginner', l: 'Beginner' }, { v: 'intermediate', l: 'Intermediate' }, { v: 'advanced', l: 'Advanced' }]} />
         </div>
         <div><label style={lbl}>ATHLETE TYPE</label>
-          <Seg value={athleteType} onChange={setAthleteType} options={[{ v: 'strength', l: '💪 Strength' }, { v: 'hybrid', l: '⚡ Hybrid' }, { v: 'endurance', l: '🏃 Endurance' }]} />
+          <Seg value={athleteType} onChange={setAthleteType} options={[
+            { v: 'strength', l: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Dumbbell} size={14} /> Strength</span> },
+            { v: 'hybrid', l: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Zap} size={14} /> Hybrid</span> },
+            { v: 'endurance', l: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Activity} size={14} /> Endurance</span> },
+          ]} />
         </div>
       </FormSection>
 
@@ -454,7 +497,7 @@ function ProfileView({ profile, onSave, onClearData }) {
       <span style={{ fontWeight: 600, color: t.text }}>{value || '—'}</span>
     </div>
   );
-  const typeEmoji = { strength: '💪', hybrid: '⚡', endurance: '🏃' }[profile.athleteType] || '';
+  const typeIcon = { strength: Dumbbell, hybrid: Zap, endurance: Activity }[profile.athleteType] || null;
 
   return (
     <div>
@@ -471,7 +514,7 @@ function ProfileView({ profile, onSave, onClearData }) {
               <div style={{ fontSize: 14, color: '#c7c7d0' }}>{profile.age}y · {profile.bodyweight}kg · {ageCategory}</div>
             </div>
             <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.08)', borderRadius: 16, padding: '12px 14px', backdropFilter: 'blur(10px)' }}>
-              <div style={{ fontSize: 32, lineHeight: 1 }}>{typeEmoji}</div>
+              <div style={{ fontSize: 32, lineHeight: 1, color: '#fff' }}>{typeIcon && <Icon C={typeIcon} size={28} color="#fff" />}</div>
               <div style={{ fontSize: 10, color: '#c7c7d0', textTransform: 'uppercase', marginTop: 4, letterSpacing: 1, fontWeight: 600 }}>{profile.athleteType}</div>
             </div>
           </div>
@@ -513,7 +556,7 @@ function ProfileView({ profile, onSave, onClearData }) {
 
       {profile.shift === 'night' && (
         <div style={{ background: GRAD.amber, color: '#fff', borderRadius: 14, padding: '16px 18px', marginBottom: 14, boxShadow: '0 8px 20px rgba(217,119,6,0.25)' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>⚠ Night shift</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={14} /> Night shift</div>
           <div style={{ fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>Prioritize sleep (7-9hrs), front-load calories, and consider a second recovery day.</div>
         </div>
       )}
@@ -524,7 +567,7 @@ function ProfileView({ profile, onSave, onClearData }) {
       )}
       {onClearData && confirmClear && (
         <div style={{ background: '#FEE2E2', border: '1.5px solid #DC2626', borderRadius: 14, padding: 18, marginTop: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#991B1B', marginBottom: 6 }}>⚠ Are you sure?</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#991B1B', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={15} color="#991B1B" /> Are you sure?</div>
           <div style={{ fontSize: 13, color: '#991B1B', lineHeight: 1.5, marginBottom: 14 }}>This will wipe all workouts, your profile, athlete ID, and friends list.</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setConfirmClear(false)} style={{ flex: 1, padding: '12px', fontSize: 13, fontWeight: 700, background: '#fff', color: '#000', border: '1px solid #D1D1D6', borderRadius: 10, cursor: 'pointer', fontFamily: FONT }}>Cancel</button>
@@ -580,7 +623,7 @@ function VoiceMemoRecorder({ transcript, setTranscript }) {
       {recording && <div style={{ position: 'absolute', inset: 0, background: GRAD.orange, opacity: 0.05 }} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, position: 'relative' }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: ACC, display: 'flex', alignItems: 'center', gap: 6 }}>🎤 Voice Memo</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: ACC, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={Mic} size={15} color={ACC} /> Voice Memo</div>
           <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>How did the session feel?</div>
         </div>
         {supported ? (
@@ -596,7 +639,7 @@ function VoiceMemoRecorder({ transcript, setTranscript }) {
         placeholder="Type or speak your reflection..."
         rows={3}
         style={{ width: '100%', padding: '12px 14px', fontSize: 15, borderRadius: 12, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, boxSizing: 'border-box', resize: 'vertical', fontFamily: FONT, lineHeight: 1.5, position: 'relative' }} />
-      {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, padding: '8px 10px', background: '#FEE2E2', borderRadius: 8, fontWeight: 500 }}>⚠ {error}</div>}
+      {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, padding: '8px 10px', background: '#FEE2E2', borderRadius: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
     </div>
   );
 }
@@ -681,7 +724,7 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <div style={{ fontSize: 14, color: t.textSec, marginBottom: 4, fontWeight: 500 }}>{greeting},</div>
-        <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8 }}>{firstName} 👋</div>
+        <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 10 }}>{firstName} <Icon C={Hand} size={26} color={t.text} className="anim-wave" /></div>
         <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
           <Pill grad={GRAD.orange} size="md">{profile.athleteType?.toUpperCase()}</Pill>
           <Pill color={t.textSec} size="md">{profile.level?.toUpperCase()}</Pill>
@@ -694,13 +737,13 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
         position: 'relative', overflow: 'hidden', boxShadow: t.heroShadow,
       }}>
         <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.5 }} />
-        <div style={{ position: 'absolute', bottom: -40, left: -40, width: 200, height: 200, background: 'linear-gradient(135deg, #7C3AED 0%, #DB2777 100%)', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.3 }} />
+        <div style={{ position: 'absolute', bottom: -40, left: -40, width: 200, height: 200, background: 'linear-gradient(135deg, #404040 0%, #1a1a1a 100%)', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.3 }} />
         <div style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
             <div>
               <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC_BRIGHT, fontWeight: 700, marginBottom: 10, textTransform: 'uppercase' }}>Hyrox Score</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                <span style={{ fontSize: 64, fontWeight: 900, background: GRAD.orangeGlow, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: -2.5, lineHeight: 0.9 }}>{cumulative.toFixed(1)}</span>
+                <span style={{ fontSize: 64, fontWeight: 900, background: GRAD_LIGHT, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: -2.5, lineHeight: 0.9 }}>{cumulative.toFixed(1)}</span>
                 <span style={{ fontSize: 22, color: '#9ca3af', fontWeight: 500 }}>/ 80</span>
               </div>
               <div style={{ fontSize: 13, color: '#c7c7d0', marginTop: 12, fontWeight: 500 }}>Cumulative · 8 stations</div>
@@ -717,10 +760,10 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
-        <StatCard label="Sessions" value={workouts.length} sub="all time" icon="📊" grad={GRAD.blue} />
-        <StatCard label="This week" value={thisWeek} sub="sessions" icon="🔥" grad={GRAD.orange} />
-        <StatCard label="Elements" value={totalElements} sub="logged" icon="⚡" grad={GRAD.purple} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 36 }}>
+        <StatCard label="Sessions" value={workouts.length} sub="all time" icon={<Icon C={BarChart3} size={20} color="#fff" />} grad={GRAD.blue} />
+        <StatCard label="This week" value={thisWeek} sub="sessions" icon={<Icon C={Flame} size={20} color="#fff" className="anim-flicker" />} grad={GRAD.orange} />
+        <StatCard label="Elements" value={totalElements} sub="logged" icon={<Icon C={Zap} size={20} color="#fff" />} grad={GRAD.purple} />
       </div>
 
       {lastWorkout && (
@@ -738,18 +781,18 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
               marginTop: 10, width: '100%', padding: '11px', fontSize: 13, fontWeight: 600,
               background: 'transparent', color: '#D97706', border: '1.5px dashed #F59E0B', borderRadius: 10,
               cursor: 'pointer', fontFamily: FONT,
-            }}>🗑 Delete this test workout</button>
+            }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Trash2} size={14} /> Delete this test workout</span></button>
           )}
         </div>
       )}
 
       <div style={{ marginBottom: 28 }}>
         <SectionTitle accent={ACC}>Station Scores</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: 16 }}>
           {STATIONS.map(s => {
             const pb = pbs[s.id];
             const sc = computeStationScore(s.id, workouts, pb);
-            const scoreColor = sc ? (sc.score >= 9 ? '#10B981' : sc.score >= 7 ? ACC_BRIGHT : '#F59E0B') : t.borderInput;
+            const scoreColor = sc ? (sc.score >= 9 ? ACC : sc.score >= 7 ? '#525252' : '#a3a3a3') : t.borderInput;
             return (
               <div key={s.id} style={{
                 background: t.card, border: `1px solid ${t.border}`, borderRadius: 18,
@@ -841,13 +884,13 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
     try { await navigator.clipboard.writeText(profile.userId); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) {}
   };
 
-  const typeEmoji = { strength: '💪', hybrid: '⚡', endurance: '🏃' };
+  const typeIcon = { strength: Dumbbell, hybrid: Zap, endurance: Activity };
   const leaderboard = [
     { userId: profile.userId, name: profile.name, athleteType: profile.athleteType, eventCity: profile.eventCity, cumulativeScore: myCumulative, stationScores: myStationScores, totalSessions: workouts.length, isMe: true },
     ...friends
   ].sort((a, b) => (b.cumulativeScore || 0) - (a.cumulativeScore || 0));
   const myRank = leaderboard.findIndex(x => x.isMe) + 1;
-  const medals = ['🥇', '🥈', '🥉'];
+  const medals = [Trophy, Award, Award];
 
   return (
     <div>
@@ -865,7 +908,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
             </div>
             <div style={{ fontSize: 14, color: '#c7c7d0', marginTop: 10 }}>{myCumulative.toFixed(1)}/80 · cumulative</div>
           </div>
-          <div style={{ fontSize: 64 }}>{myRank === 1 ? '🥇' : myRank === 2 ? '🥈' : myRank === 3 ? '🥉' : '🏆'}</div>
+          <div style={{ fontSize: 64, color: '#fff' }}><Icon C={myRank === 1 ? Trophy : Award} size={56} color="#fff" /></div>
         </div>
       </div>
 
@@ -875,7 +918,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
           {leaderboard.map((a, i) => {
             const rank = i + 1;
             const isMe = a.isMe;
-            const emoji = typeEmoji[a.athleteType] || '🏃';
+            const TypeIcon = typeIcon[a.athleteType] || Activity;
             return (
               <div key={a.userId} style={{
                 background: isMe ? `linear-gradient(135deg, ${ACC}15 0%, ${ACC}05 100%)` : t.card,
@@ -885,14 +928,14 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
                 boxShadow: isMe ? '0 8px 24px rgba(232,69,27,0.12)' : t.cardShadow,
               }}>
                 <div style={{ minWidth: 40, textAlign: 'center' }}>
-                  {rank <= 3 ? <span style={{ fontSize: 26 }}>{medals[rank - 1]}</span> : <span style={{ fontSize: 20, fontWeight: 800, color: t.textSec }}>#{rank}</span>}
+                  {rank <= 3 ? <Icon C={medals[rank - 1]} size={26} color={t.text} /> : <span style={{ fontSize: 20, fontWeight: 800, color: t.textSec }}>#{rank}</span>}
                 </div>
                 <div style={{
                   width: 48, height: 48, borderRadius: 24,
                   background: isMe ? GRAD.orange : t.surfaceAlt,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
                   boxShadow: isMe ? '0 4px 12px rgba(232,69,27,0.3)' : 'none',
-                }}>{emoji}</div>
+                }}><Icon C={TypeIcon} size={22} color={isMe ? '#fff' : t.text} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {a.name}
@@ -925,7 +968,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
               boxShadow: adding || !addId ? 'none' : '0 4px 12px rgba(232,69,27,0.3)',
             }}>{adding ? '...' : 'ADD'}</button>
           </div>
-          {error && <div style={{ fontSize: 13, color: '#DC2626', marginTop: 10, fontWeight: 500 }}>⚠ {error}</div>}
+          {error && <div style={{ fontSize: 13, color: '#DC2626', marginTop: 10, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={13} color="#DC2626" /> {error}</div>}
         </div>
       </div>
 
@@ -940,7 +983,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
               background: copied ? GRAD.green : GRAD.orange, color: '#fff', border: 'none', borderRadius: 999,
               cursor: 'pointer', fontFamily: FONT,
               boxShadow: copied ? '0 4px 12px rgba(16,185,129,0.3)' : '0 4px 12px rgba(232,69,27,0.3)',
-            }}>{copied ? '✓ COPIED' : 'COPY ID'}</button>
+            }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Check} size={13} color="#fff" /> COPIED</span> : 'COPY ID'}</button>
           </div>
           <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>Share this code with friends to let them add you.</div>
         </div>
@@ -1000,19 +1043,19 @@ function PasteParser({ onImport, lbl, inp }) {
   };
 
   if (!open) {
-    return <button onClick={() => setOpen(true)} style={{ width: '100%', padding: '16px', fontSize: 14, fontWeight: 700, background: t.surfaceAlt, color: t.text, border: `2px dashed ${t.borderInput}`, borderRadius: 12, cursor: 'pointer', marginBottom: 16, fontFamily: FONT }}>📋 PASTE / IMPORT EXERCISES</button>;
+    return <button onClick={() => setOpen(true)} style={{ width: '100%', padding: '16px', fontSize: 14, fontWeight: 700, background: t.surfaceAlt, color: t.text, border: `2px dashed ${t.borderInput}`, borderRadius: 12, cursor: 'pointer', marginBottom: 16, fontFamily: FONT, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Clipboard} size={14} /> PASTE / IMPORT EXERCISES</button>;
   }
 
   return (
     <div style={{ background: t.card, border: `2px solid ${ACC}`, borderRadius: 16, padding: 18, marginBottom: 16, boxShadow: '0 8px 24px rgba(232,69,27,0.1)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: ACC, letterSpacing: 0.5 }}>📋 IMPORT</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: ACC, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={Clipboard} size={14} color={ACC} /> IMPORT</div>
         <button onClick={() => { setOpen(false); setText(''); setParsed([]); }} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 24, fontFamily: FONT }}>×</button>
       </div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 12, lineHeight: 1.5 }}>Paste your routine — we'll parse and translate.</div>
-      <button onClick={handleClipboard} style={{ fontSize: 13, padding: '10px 16px', background: t.card, color: ACC, border: `1.5px solid ${ACC}`, borderRadius: 10, cursor: 'pointer', marginBottom: 10, fontWeight: 700, fontFamily: FONT }}>📌 PASTE FROM CLIPBOARD</button>
+      <button onClick={handleClipboard} style={{ fontSize: 13, padding: '10px 16px', background: t.card, color: ACC, border: `1.5px solid ${ACC}`, borderRadius: 10, cursor: 'pointer', marginBottom: 10, fontWeight: 700, fontFamily: FONT, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Pin} size={13} color={ACC} /> PASTE FROM CLIPBOARD</button>
       <textarea value={text} onChange={e => setText(e.target.value)} placeholder={`Squats 3×8\nDB Thrusters 5×15\nFarmer's Carry 4×40m`} rows={5} style={{ ...inp, resize: 'vertical' }} />
-      {text && <button onClick={() => setParsed(parsePastedExercises(text))} style={{ marginTop: 10, width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(232,69,27,0.25)' }}>⚡ PARSE</button>}
+      {text && <button onClick={() => setParsed(parsePastedExercises(text))} style={{ marginTop: 10, width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Zap} size={14} color="#fff" /> PARSE</button>}
       {parsed.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: t.textSec, marginBottom: 10 }}>PARSED ({parsed.length})</div>
@@ -1028,7 +1071,7 @@ function PasteParser({ onImport, lbl, inp }) {
               );
             })}
           </div>
-          <button onClick={() => { onImport(parsed); setText(''); setParsed([]); setOpen(false); }} style={{ width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.green, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(16,185,129,0.25)' }}>✓ IMPORT ALL</button>
+          <button onClick={() => { onImport(parsed); setText(''); setParsed([]); setOpen(false); }} style={{ width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.green, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Check} size={14} color="#fff" /> IMPORT ALL</button>
         </div>
       )}
     </div>
@@ -1047,7 +1090,11 @@ function TranslateMode({ translated, setTranslated, inp, lbl }) {
     if (e) { const defaults = {}; e.fields.forEach(f => { defaults[f.k] = f.d; }); setVals(defaults); }
   };
 
-  const preview = ex ? ex.calc(Object.fromEntries(Object.entries(vals).map(([k, v]) => [k, typeof v === 'string' && !isNaN(v) ? parseFloat(v) : v]))) : 0;
+  const preview = ex ? ex.calc(Object.fromEntries(Object.entries(vals).map(([k, v]) => {
+    if (v === '' || v == null) return [k, 0];
+    const n = typeof v === 'string' ? parseFloat(v) : v;
+    return [k, Number.isFinite(n) ? n : 0];
+  }))) : 0;
   const meta = ex ? getStationMeta(ex.station) : null;
   const color = ex ? (ex.station === 'run' ? ACC : STATION_META[ex.station]?.color) : t.textSec;
   const grad = ex ? (ex.station === 'run' ? GRAD.orange : STATION_META[ex.station]?.grad) : null;
@@ -1098,8 +1145,8 @@ function TranslateMode({ translated, setTranslated, inp, lbl }) {
             {ex.fields.map(f => (
               <div key={f.k}>
                 <label style={lbl}>{f.l.toUpperCase()}</label>
-                <input type={f.type === 'text' ? 'text' : 'number'} step={f.type === 'speed' ? '0.1' : undefined} value={vals[f.k] ?? ''}
-                  onChange={e => setVals({ ...vals, [f.k]: f.type === 'text' ? e.target.value : parseFloat(e.target.value) || 0 })}
+                <input type={f.type === 'text' ? 'text' : 'number'} step={f.type === 'speed' ? '0.1' : undefined} placeholder={String(f.d ?? '')} value={vals[f.k] ?? ''}
+                  onChange={e => setVals({ ...vals, [f.k]: e.target.value })}
                   style={inp} />
               </div>
             ))}
@@ -1198,7 +1245,7 @@ function DirectMode({ stationData, setStation, runCount, setRunCount, runPace, s
         </div>
         {runMode === 'pace' ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={lbl}>1KM RUNS</label><input type="number" min="0" max="12" value={runCount} onChange={e => setRunCount(parseInt(e.target.value) || 0)} style={inp} /></div>
+            <div><label style={lbl}>1KM RUNS</label><input type="number" min="0" max="12" placeholder="0" value={runCount === 0 ? '' : runCount} onChange={e => setRunCount(e.target.value === '' ? 0 : parseInt(e.target.value) || 0)} style={inp} /></div>
             <div><label style={lbl}>AVG PACE (MM:SS)</label><input type="text" placeholder="5:30" value={runPace} onChange={e => setRunPace(e.target.value)} style={inp} /></div>
           </div>
         ) : (
@@ -1241,6 +1288,142 @@ function DirectMode({ stationData, setStation, runCount, setRunCount, runPace, s
       </div>
     </div>
   );
+}
+
+function getRecoveryTips(workout: any, allWorkouts: any[] = [], profile: any = null) {
+  const stationIds = Object.keys(workout?.stations || {});
+  const hasRun = !!(workout?.runs && workout.runs.count > 0);
+  const heavy = ['sledPush', 'sledPull', 'farmers', 'lunges', 'wallballs'].filter(s => stationIds.includes(s));
+  const cardio = ['skierg', 'rowing'].filter(s => stationIds.includes(s));
+  const overhead = ['wallballs', 'burpee'].filter(s => stationIds.includes(s));
+  const total = stationIds.length + (hasRun ? 1 : 0);
+
+  // Weekly volume + back-to-back day awareness
+  const now = Date.now();
+  const weekCount = (allWorkouts || []).filter(w => (now - new Date(w.date).getTime()) <= 7 * 86400000).length;
+  const yDate = new Date(now - 86400000).toDateString();
+  const trainedYesterday = (allWorkouts || []).some(w => new Date(w.date).toDateString() === yDate && w.id !== workout?.id);
+
+  // Race context
+  const daysToRace = profile?.eventDate ? Math.max(0, Math.floor((new Date(profile.eventDate).getTime() - now) / 86400000)) : 999;
+  const inTaper = daysToRace > 0 && daysToRace <= 14;
+
+  // Voice memo sentiment
+  const memo = (workout?.voiceMemo || '').toLowerCase();
+  const tired = /\b(tired|exhausted|wiped|smoked|fried|cooked|drained)\b/.test(memo);
+  const sore = /\b(sore|stiff|tight|aching|ache)\b/.test(memo);
+  const great = /\b(great|strong|crushed|smashed|nailed|easy|fresh)\b/.test(memo);
+
+  // Athlete profile
+  const isStrength = profile?.athleteType === 'strength';
+  const isEndurance = profile?.athleteType === 'endurance';
+  const bw = parseFloat(profile?.bodyweight) || 75;
+  const protein = Math.round(bw * 0.4);
+  const carbs = Math.round(bw);
+
+  // Stable PRNG seeded by workout id so the same log always yields the same tips
+  let s = ((workout?.id || now) % 1_000_000) + 1;
+  const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  const pick = (arr: any[]) => arr[Math.floor(rand() * arr.length)];
+
+  const cands: Record<string, any[]> = { mobility: [], fuel: [], modality: [], context: [], soft: [] };
+
+  // --- MOBILITY ---
+  if (heavy.length >= 2) cands.mobility.push({ icon: Footprints, title: 'Mobility flow', body: pick([
+    'Heavy lower body today. 10 min on hip flexors, glutes and ankles tonight.',
+    'Sled + lunge load tightens hips. Pigeon pose 90s each side, twice.',
+    'Couch stretch and 90/90 hip rotations before bed — 6 minutes total.',
+  ])});
+  if (overhead.length >= 1) cands.mobility.push({ icon: Wind, title: 'Shoulder & wrist care', body: pick([
+    'Overhead volume loads the rotator cuff. Doorway pec stretch + thread-the-needle.',
+    'Wrist circles, 30s each direction. Then banded pull-aparts × 20.',
+    'Sleeper stretch and foam-roll your T-spine — 5 minutes well spent.',
+  ])});
+  if (hasRun || cardio.includes('rowing')) cands.mobility.push({ icon: Activity, title: 'Hip flexor reset', body: pick([
+    'Running tightens psoas. Half-kneeling lunge stretch, 60s each side.',
+    'Couch stretch tonight, 2 min per side. Your race-day stride needs it.',
+  ])});
+  if (sore) cands.mobility.push({ icon: Footprints, title: 'Gentle, not aggressive', body: 'You flagged soreness. Skip deep stretching — easy yin holds, 90s, breath only.' });
+  if (stationIds.includes('skierg')) cands.mobility.push({ icon: Wind, title: 'Lat & T-spine release', body: 'SkiErg loads lats hard. Foam-roll thoracic spine + child\'s pose with side reach.' });
+
+  // --- FUEL ---
+  if (hasRun || cardio.length >= 1) cands.fuel.push({ icon: Droplet, title: 'Electrolytes first', body: pick([
+    'Cardio drains sodium. 500ml water + a pinch of salt within 30 min.',
+    'LMNT, coconut water, or salt + lemon — get it in before your meal.',
+    'Replace what you sweated. Sodium tab in 750ml water now.',
+  ])});
+  cands.fuel.push({ icon: Apple, title: 'Refuel window', body: pick([
+    `${protein}g protein + ${carbs}g carb in the next 60 min.`,
+    'Eggs + rice, chicken + sweet potato, or shake + banana — pick one fast.',
+    `Aim for 0.4g protein per kg (≈${protein}g for you) and slow carbs alongside.`,
+  ])});
+  if (overhead.length >= 1 || heavy.length >= 2) cands.fuel.push({ icon: Apple, title: 'Magnesium tonight', body: pick([
+    'Heavy reps + sweat = magnesium dip. Glycinate before bed helps sleep too.',
+    'Spinach, almonds, dark chocolate — work 300mg of magnesium in tonight.',
+  ])});
+  if (total >= 4) cands.fuel.push({ icon: Droplet, title: 'Pre-bed hydration', body: '300ml water with a pinch of salt 90 min before bed — avoids the 3am wake-up.' });
+
+  // --- MODALITY ---
+  if (heavy.length >= 1) cands.modality.push({ icon: Snowflake, title: 'Cold exposure', body: pick([
+    '3 min cold shower cuts DOMS for the next 24 hours.',
+    'Last 90 seconds of your shower at full cold — legs first.',
+    'Contrast finish: 60s hot / 30s cold × 3. Vascular flush.',
+  ])});
+  if (total >= 5 || tired) cands.modality.push({ icon: Moon, title: 'Sleep tonight', body: pick([
+    `Volume was high${tired ? ' and you flagged fatigue' : ''}. Lock in 8 hours — adaptation happens in sleep.`,
+    'Phone out of room, room cold (~18°C), 8 hours. Non-negotiable.',
+    'No screens 30 min before bed. Magnesium + chamomile, lights low.',
+  ])});
+  if (cardio.length >= 1 || hasRun) cands.modality.push({ icon: HeartPulse, title: 'Z2 cooldown', body: pick([
+    '5-min easy walk or cycle — drops HR gradually, flushes lactate.',
+    'Skip the abrupt stop. 5 min nasal-breathing walk before showering.',
+  ])});
+  cands.modality.push({ icon: Wind, title: 'Box breathing', body: pick([
+    '5 min box breathing (4-4-4-4) post-shower. Drops cortisol fast.',
+    'Down-regulate: 4s inhale, 6s exhale × 12. Parasympathetic switch.',
+  ])});
+
+  // --- RACE / WEEK CONTEXT ---
+  if (inTaper) cands.context.push({ icon: Calendar, title: `${daysToRace} days to race`, body: pick([
+    'Taper window. Recovery > volume now. Prioritize sleep and easy aerobic work.',
+    'Race close — today shouldn\'t have been all-out. Keep the next one sharper, shorter.',
+  ])});
+  if (weekCount >= 5) cands.context.push({ icon: AlertTriangle, title: 'High weekly volume', body: `${weekCount} sessions this week. Tomorrow: easy aerobic or rest. Don\'t grind through.` });
+  if (trainedYesterday) cands.context.push({ icon: AlertTriangle, title: 'Back-to-back days', body: 'Trained yesterday too. Watch CNS — drop intensity if morning HR is elevated.' });
+  if (great) cands.context.push({ icon: Trophy, title: 'Ride the wave', body: 'You felt strong. Note your pre-workout meal, sleep, and timing — replicate it.' });
+  if (isStrength && (hasRun || cardio.length >= 1)) cands.context.push({ icon: Activity, title: 'Strength → engine', body: 'Cardio bias is a smart call for a strength athlete. Add one more Z2 this week.' });
+  if (isEndurance && heavy.length >= 2) cands.context.push({ icon: Dumbbell, title: 'Endurance → load', body: 'Heavy work is your gap. Repeat this stimulus in 72 hours — not sooner.' });
+  if (weekCount <= 1 && !trainedYesterday) cands.context.push({ icon: Flame, title: 'Build the streak', body: 'Light week so far. Schedule the next session before tomorrow ends — momentum > intensity.' });
+
+  // --- MENTAL / SOFT ---
+  if (tired || total >= 5) cands.soft.push({ icon: MessageCircle, title: 'Brain dump', body: '2 min journal tonight: what felt strong, what was off. Future-you will use this.' });
+  if (great) cands.soft.push({ icon: Lightbulb, title: 'Capture the win', body: 'Voice-memo what worked while fresh — meal, sleep, mindset, warm-up.' });
+  cands.soft.push({ icon: Target, title: "Pick tomorrow's focus", body: pick([
+    'Decide tonight: one focus station for next session. Avoid the all-of-it trap.',
+    'Pick the weakest station and own it tomorrow. Just one.',
+    'Tomorrow: 80% of effort on one weakness, 20% maintenance.',
+  ])});
+
+  // Pull one tip per category, in order, until we have 3 — guarantees variety
+  const order = ['mobility', 'fuel', 'modality', 'context', 'soft'];
+  // Rotate the starting category by workout id so different logs lead with different angles
+  const offset = Math.floor(rand() * order.length);
+  const rotated = [...order.slice(offset), ...order.slice(0, offset)];
+  const picked: any[] = [];
+  for (const cat of rotated) {
+    if (cands[cat]?.length && picked.length < 3) picked.push(pick(cands[cat]));
+  }
+  // Top up if a category was empty
+  const fallback = [
+    { icon: Apple, title: 'Refuel within 60 min', body: 'Protein + carbs in your next meal. Don\'t skip it.' },
+    { icon: Droplet, title: 'Hydrate', body: '500ml water + sodium now, again before bed.' },
+    { icon: Moon, title: 'Sleep is recovery', body: 'Aim for 7–9 hours tonight. Phone out of bed.' },
+  ];
+  for (const f of fallback) {
+    if (picked.length >= 3) break;
+    if (!picked.find(p => p.title === f.title)) picked.push(f);
+  }
+  return picked.slice(0, 3);
 }
 
 function PostWorkoutInsight({ workout, allWorkouts, pbs, profile, onClose }) {
@@ -1302,14 +1485,14 @@ Write a short note that acknowledges ONE specific thing from today and suggests 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
             <div>
               <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC, fontWeight: 800, marginBottom: 6, textTransform: 'uppercase' }}>Coach</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: t.text, letterSpacing: -0.6 }}>Session Saved ✓</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: t.text, letterSpacing: -0.6, display: 'flex', alignItems: 'center', gap: 8 }}>Session Saved <Icon C={Check} size={22} color={t.text} /></div>
             </div>
             <button onClick={onClose} style={{ background: t.surfaceAlt, border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 20, fontFamily: FONT, lineHeight: 1, padding: 0, width: 36, height: 36, borderRadius: 18 }}>×</button>
           </div>
 
           {loading && (
             <div style={{ padding: '40px 0', textAlign: 'center', color: t.textSec, fontSize: 14 }}>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>💭</div>
+              <div style={{ marginBottom: 12 }}><Icon C={MessageCircle} size={36} color={t.text} /></div>
               Coach is reviewing your session...
             </div>
           )}
@@ -1323,7 +1506,7 @@ Write a short note that acknowledges ONE specific thing from today and suggests 
               </div>
               {insight.newPBs?.length > 0 && (
                 <div style={{ background: GRAD.green, color: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 16, boxShadow: '0 8px 20px rgba(16,185,129,0.25)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, marginBottom: 4, textTransform: 'uppercase', opacity: 0.9 }}>🏆 New Personal Best</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, marginBottom: 4, textTransform: 'uppercase', opacity: 0.9, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={Trophy} size={11} color="#fff" className="anim-bounce" /> New Personal Best</div>
                   <div style={{ fontSize: 14, fontWeight: 700 }}>You smashed your best on: {insight.newPBs.join(', ')}</div>
                 </div>
               )}
@@ -1334,10 +1517,29 @@ Write a short note that acknowledges ONE specific thing from today and suggests 
             </>
           )}
 
+          <div style={{ marginBottom: 18, border: `1px solid ${t.border}`, borderRadius: 16, padding: '16px 18px', background: t.surfaceAlt }}>
+            <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 800, marginBottom: 12, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon C={HeartPulse} size={12} color={t.textSec} /> Recovery tips
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {getRecoveryTips(workout, allWorkouts, profile).map((tip, i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: t.card, border: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon C={tip.icon} size={15} color={t.text} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 2 }}>{tip.title}</div>
+                    <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.5 }}>{tip.body}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <button onClick={onClose} style={{
             width: '100%', padding: '16px', fontSize: 15, fontWeight: 700,
             background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 14,
-            cursor: 'pointer', fontFamily: FONT, boxShadow: '0 8px 20px rgba(232,69,27,0.3)',
+            cursor: 'pointer', fontFamily: FONT, boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
           }}>GOT IT</button>
         </div>
       </div>
@@ -1400,13 +1602,13 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
           background: mode === 'translate' ? t.card : 'transparent',
           color: mode === 'translate' ? ACC : t.textSec,
           boxShadow: mode === 'translate' ? t.cardShadow : 'none',
-        }}>🔄 Translate</button>
+        }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={RefreshCw} size={14} /> Translate</span></button>
         <button onClick={() => setMode('direct')} style={{
           flex: 1, padding: '13px', fontSize: 14, fontWeight: 700, borderRadius: 9, cursor: 'pointer', border: 'none', fontFamily: FONT,
           background: mode === 'direct' ? t.card : 'transparent',
           color: mode === 'direct' ? ACC : t.textSec,
           boxShadow: mode === 'direct' ? t.cardShadow : 'none',
-        }}>🎯 Direct Hyrox</button>
+        }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Target} size={14} /> Direct Hyrox</span></button>
       </div>
 
       <button onClick={() => setTestMode(!testMode)} style={{
@@ -1417,11 +1619,11 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
         boxShadow: testMode ? '0 4px 14px rgba(245,158,11,0.25)' : 'none',
       }}>
         <span style={{ width: 8, height: 8, borderRadius: 4, background: testMode ? '#fff' : t.borderInput }} />
-        {testMode ? '🧪 TEST MODE — entries flagged yellow' : 'Enable Test Mode'}
+        {testMode ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={FlaskConical} size={13} /> TEST MODE — entries flagged</span> : 'Enable Test Mode'}
       </button>
 
       <div style={{ background: t.surfaceAlt, borderRadius: 12, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: t.textSec, lineHeight: 1.5 }}>
-        {mode === 'translate' ? '💡 Log regular gym exercises — we translate to Hyrox stations.' : '✅ Log actual Hyrox station times and weights.'}
+        {mode === 'translate' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Lightbulb} size={13} /> Log regular gym exercises — we translate to Hyrox stations.</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={CheckCircle2} size={13} /> Log actual Hyrox station times and weights.</span>}
       </div>
 
       <div style={{ marginBottom: 16 }}><label style={lbl}>DATE</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
@@ -1450,7 +1652,7 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
         color: '#fff', border: 'none', borderRadius: 16,
         cursor: hasAny ? 'pointer' : 'not-allowed', fontFamily: FONT, letterSpacing: 0.3,
         boxShadow: !hasAny ? 'none' : saved ? '0 8px 20px rgba(16,185,129,0.3)' : testMode ? '0 8px 20px rgba(245,158,11,0.3)' : '0 8px 20px rgba(232,69,27,0.3)',
-      }}>{saved ? '✓ WORKOUT SAVED!' : testMode ? '🧪 SAVE TEST WORKOUT' : 'SAVE WORKOUT'}</button>
+      }}>{saved ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon C={Check} size={16} color="#fff" /> WORKOUT SAVED!</span> : testMode ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon C={FlaskConical} size={16} color="#fff" /> SAVE TEST WORKOUT</span> : 'SAVE WORKOUT'}</button>
 
       {insightFor && profile && (
         <PostWorkoutInsight
@@ -1498,7 +1700,7 @@ function Progress({ workouts, pbs }) {
       {view === 'all' ? (
         <div>
           <SectionTitle accent={ACC}>All Stations Progression</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
             {STATIONS.map(s => {
               const data = getDataFor(s.id);
               const spb = pbs[s.id];
@@ -1535,7 +1737,17 @@ function Progress({ workouts, pbs }) {
                             </linearGradient>
                           </defs>
                           <YAxis hide domain={['auto', 'auto']} reversed />
-                          <Area type="monotone" dataKey="time" stroke={s.color} strokeWidth={2.5} fill={`url(#grad-${s.id})`} isAnimationActive={false} />
+                          <Tooltip
+                            cursor={{ stroke: s.color, strokeWidth: 1, strokeDasharray: '3 3' }}
+                            content={({ active, payload, label }: any) => !active || !payload?.length ? null : (
+                              <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: '8px 12px', fontSize: 12, boxShadow: t.cardShadow }}>
+                                <div style={{ color: t.textSec, fontSize: 11 }}>{label}</div>
+                                <div style={{ color: s.color, fontWeight: 700 }}>{fmtTime(payload[0]?.value)}</div>
+                                {payload[0]?.payload?.weight != null && <div style={{ color: t.textSec, fontSize: 11, marginTop: 2 }}>{payload[0].payload.weight}{s.unit === 'reps' ? ' kg' : ' kg'}</div>}
+                              </div>
+                            )}
+                          />
+                          <Area type="monotone" dataKey="time" stroke={s.color} strokeWidth={2.5} fill={`url(#grad-${s.id})`} isAnimationActive={false} activeDot={{ r: 4, fill: s.color }} />
                         </AreaChart>
                       </ResponsiveContainer>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: t.textSec, marginTop: 4, fontWeight: 500 }}>
@@ -1568,7 +1780,7 @@ function Progress({ workouts, pbs }) {
           </div>
           {chartData.length < 2 ? (
             <div style={{ background: t.surfaceAlt, borderRadius: 16, padding: '3rem', textAlign: 'center', color: t.textSec }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
+              <div style={{ marginBottom: 12 }}><Icon C={BarChart3} size={40} color={t.textSec} /></div>
               <div style={{ fontSize: 15, fontWeight: 600 }}>Log at least 2 {station.name} sessions</div>
             </div>
           ) : (
@@ -1618,9 +1830,9 @@ function MyWeek({ profile }) {
       <SectionTitle accent={ACC}>Your Weekly Split</SectionTitle>
       {profile.athleteType && (
         <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, padding: '14px 18px', marginBottom: 18, fontSize: 14, color: t.textMute, lineHeight: 1.5, boxShadow: t.cardShadow }}>
-          {profile.athleteType === 'strength' && '💪 As a strength athlete, prioritize extending running volume.'}
-          {profile.athleteType === 'hybrid' && '⚡ Hybrid profile — well-matched. Focus on sharpening transitions.'}
-          {profile.athleteType === 'endurance' && '🏃 As an endurance athlete, add more loaded carries and sled work.'}
+          {profile.athleteType === 'strength' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Dumbbell} size={13} /> As a strength athlete, prioritize extending running volume.</span>}
+          {profile.athleteType === 'hybrid' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Zap} size={13} /> Hybrid profile — well-matched. Focus on sharpening transitions.</span>}
+          {profile.athleteType === 'endurance' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Activity} size={13} /> As an endurance athlete, add more loaded carries and sled work.</span>}
         </div>
       )}
       <div style={{ display: 'grid', gap: 12 }}>
@@ -1683,7 +1895,7 @@ const PLAN_WEEKS = [
   ['Deload', ['Easy 4km', 'Light stations 40%', 'Recovery']],
   ['Final push', ['3×1km goal pace', 'Station race intensity', 'Rest']],
   ['Taper begins', ['2×1km easy', 'Light station touch', 'Visualize']],
-  ['Race week', ['2×easy 1km', 'Rest Wed-Fri', 'RACE DAY 🔥']],
+  ['Race week', ['2×easy 1km', 'Rest Wed-Fri', 'RACE DAY']],
 ];
 const PHASES = [
   { phase: 'BASE', color: '#059669', grad: GRAD.green, label: 'Base Building' },
@@ -1711,7 +1923,7 @@ function TrainingPlan({ profile }) {
     <div>
       <div style={{ background: GRAD.darkHero, color: '#fff', borderRadius: 18, padding: '18px 22px', marginBottom: 24, display: 'flex', gap: 16, alignItems: 'center', position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
         <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(60px)', opacity: 0.4 }} />
-        <div style={{ fontSize: 32, position: 'relative' }}>🗓</div>
+        <div style={{ position: 'relative', display: 'flex' }}><Icon C={Calendar} size={32} color="#fff" /></div>
         <div style={{ flex: 1, position: 'relative' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>21-Week Plan → Hyrox {profile.eventCity}</div>
           <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>{planStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
@@ -1785,10 +1997,51 @@ function Countdown({ eventDate }) {
   );
 }
 
+function generateSeedWorkouts() {
+  const STATION_IDS = ['skierg', 'sledPush', 'sledPull', 'burpee', 'rowing', 'farmers', 'lunges', 'wallballs'];
+  const BASELINE = { skierg: 270, sledPush: 52, sledPull: 54, burpee: 360, rowing: 270, farmers: 88, lunges: 92, wallballs: 360 };
+  const TARGET   = { skierg: 215, sledPush: 36, sledPull: 38, burpee: 270, rowing: 220, farmers: 64, lunges: 68, wallballs: 280 };
+  const WEIGHT   = { sledPush: 102, sledPull: 102, farmers: 24, lunges: 20, wallballs: 6 };
+
+  let s = 1337;
+  const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+
+  const out: any[] = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(today); start.setDate(start.getDate() - 60);
+
+  for (let week = 0; week < 9; week++) {
+    const progress = Math.min(1, week / 8);
+    for (const dayOff of [0, 2, 5]) {
+      const date = new Date(start); date.setDate(start.getDate() + week * 7 + dayOff);
+      if (date > today) break;
+
+      const numStations = 3 + Math.floor(rand() * 4);
+      const ids = [...STATION_IDS].sort(() => rand() - 0.5).slice(0, numStations);
+      const stations: any = {};
+      for (const sid of ids) {
+        const b = BASELINE[sid as keyof typeof BASELINE], tg = TARGET[sid as keyof typeof TARGET];
+        const noise = (rand() - 0.5) * (b - tg) * 0.25;
+        const time = Math.max(tg - 5, Math.round(b - (b - tg) * progress + noise));
+        stations[sid] = { time, weight: WEIGHT[sid as keyof typeof WEIGHT] ?? null };
+      }
+
+      const runs = rand() < 0.55 ? { count: 4 + Math.floor(rand() * 5), pace: 240 + Math.floor(rand() * 90) } : null;
+      out.push({
+        id: date.getTime() + Math.floor(rand() * 1000),
+        date: date.toISOString().slice(0, 10),
+        sessionType: rand() < 0.5 ? 'direct' : 'translate',
+        stations, runs, translated: [], notes: '', voiceMemo: null, isTest: false,
+      });
+    }
+  }
+  return out;
+}
+
 export default function HyroxTracker() {
   const [tab, setTab] = useState('dashboard');
-  const [workouts, setWorkouts] = useState([]);
-  const [profile, setProfile] = useState(null);
+  const [workouts, setWorkouts] = useState<any[]>([]);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { t, mode, setMode } = useTheme();
 
@@ -1800,8 +2053,20 @@ export default function HyroxTracker() {
           window.storage.get('hyrox_profile_v2').catch(() => null),
           window.storage.get('hyrox_theme').catch(() => null),
         ]);
-        if (w) setWorkouts(JSON.parse(w.value));
-        if (p) setProfile(JSON.parse(p.value));
+        if (w) {
+          setWorkouts(JSON.parse(w.value));
+        } else {
+          const seed = generateSeedWorkouts();
+          setWorkouts(seed);
+          try { await window.storage.set('hyrox_workouts_v3', JSON.stringify(seed)); } catch (e) {}
+        }
+        if (p) {
+          setProfile(JSON.parse(p.value));
+        } else {
+          const seedProfile = { ...DEFAULT_PROFILE, userId: genUserId(), name: 'Manav', age: '28', bodyweight: '75', occupation: 'Engineer' };
+          setProfile(seedProfile);
+          try { await window.storage.set('hyrox_profile_v2', JSON.stringify(seedProfile)); } catch (e) {}
+        }
         if (th?.value === 'dark' || th?.value === 'light') setMode(th.value);
       } catch (e) {}
       setLoading(false);
@@ -1866,7 +2131,7 @@ export default function HyroxTracker() {
   ];
 
   return (
-    <div style={{ fontFamily: FONT, maxWidth: 640, margin: '0 auto', fontSize: 15, color: t.text, background: t.bg, minHeight: '100vh' }}>
+    <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh' }}>
       <div style={{ background: t.headerBg, padding: '22px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: 2.5, color: ACC_BRIGHT, fontWeight: 800, marginBottom: 6, textTransform: 'uppercase' }}>Hyrox · {profile.eventCity}</div>
@@ -1874,11 +2139,6 @@ export default function HyroxTracker() {
           <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 3, fontWeight: 500 }}>{new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-          <button onClick={() => setMode(mode === 'light' ? 'dark' : 'light')} style={{
-            background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: 999, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
-          }}>{mode === 'light' ? '🌙' : '☀️'}</button>
           <Countdown eventDate={profile.eventDate} />
         </div>
       </div>
@@ -1894,7 +2154,7 @@ export default function HyroxTracker() {
         ))}
       </div>
 
-      <div style={{ padding: '2rem 1.5rem 3rem' }}>
+      <div style={{ padding: '2.5rem 1.75rem 4rem' }}>
         {tab === 'dashboard' && <Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} />}
         {tab === 'friends' && <Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} />}
         {tab === 'myweek' && <MyWeek profile={profile} />}
