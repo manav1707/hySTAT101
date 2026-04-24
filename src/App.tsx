@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, memo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from "recharts";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from "recharts";
 import {
   Flame, Dumbbell, Zap, Activity, AlertTriangle, Mic, Hand, BarChart3,
   Trash2, Award, Trophy, Check, Clipboard, Pin, CheckCircle2, MessageCircle,
-  RefreshCw, Target, FlaskConical, Lightbulb, Calendar, Moon, Sun,
+  RefreshCw, Target, FlaskConical, Lightbulb, Calendar, Moon,
   Footprints, Wind, Droplet, Snowflake, Apple, HeartPulse,
 } from "lucide-react";
 
