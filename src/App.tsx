@@ -101,15 +101,15 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     .anim-spin-soft { animation: hyrox-spin-soft 3s ease-in-out infinite; display: inline-block; }
     /* Full-card flip — single rotateX swap */
     @keyframes hyrox-card-flip {
-      0%   { transform: rotateX(0deg);   opacity: 1; }
-      49%  { transform: rotateX(90deg);  opacity: 0.4; }
-      51%  { transform: rotateX(-90deg); opacity: 0.4; }
-      100% { transform: rotateX(0deg);   opacity: 1; }
+      0%   { transform: rotateX(0deg) scale(1);      opacity: 1; }
+      45%  { transform: rotateX(90deg) scale(0.92);  opacity: 0.3; }
+      55%  { transform: rotateX(-90deg) scale(0.92); opacity: 0.3; }
+      100% { transform: rotateX(0deg) scale(1);      opacity: 1; }
     }
     .card-flip {
       will-change: transform, opacity;
       backface-visibility: hidden;
-      animation: hyrox-card-flip 0.32s cubic-bezier(0.4,0,0.2,1);
+      animation: hyrox-card-flip 0.45s cubic-bezier(0.4, 0.1, 0.2, 1);
       transform-origin: 50% 50%;
     }
     @media (prefers-reduced-motion: reduce) {
@@ -736,7 +736,7 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 14, color: t.textSec, marginBottom: 4, fontWeight: 500 }}>{greeting},</div>
+        <div style={{ fontSize: 15, color: t.text, marginBottom: 6, fontWeight: 700, letterSpacing: '-0.01em' }}>{greeting},</div>
         <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 10 }}>{firstName} <Icon C={Hand} size={26} color={t.text} className="anim-wave" /></div>
         <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
           <Pill grad={GRAD.orange} size="md">{profile.athleteType?.toUpperCase()}</Pill>
@@ -2015,16 +2015,6 @@ function Countdown({ eventDate }) {
 
 function FlipUnit({ value, label }: { value: number; label: string }) {
   const display = String(value).padStart(2, '0');
-  const [flipKey, setFlipKey] = useState(0);
-  const lastRef = useRef(display);
-
-  useEffect(() => {
-    if (lastRef.current !== display) {
-      lastRef.current = display;
-      setFlipKey((k) => k + 1);
-    }
-  }, [display]);
-
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{
@@ -2035,7 +2025,7 @@ function FlipUnit({ value, label }: { value: number; label: string }) {
       }}>
         <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.4)', marginTop: -0.5, zIndex: 2 }} />
         <div
-          key={flipKey}
+          key={display}
           className="card-flip"
           style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: ACC_BRIGHT, letterSpacing: '-0.5px', fontFamily: FONT }}
         >
@@ -2208,7 +2198,7 @@ export default function HyroxTracker() {
         ))}
       </div>
 
-      <div style={{ padding: '2.5rem 1.75rem 4rem' }}>
+      <div style={{ padding: '1.25rem 1.75rem 4rem' }}>
         {tab === 'dashboard' && <Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} />}
         {tab === 'friends' && <Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} />}
         {tab === 'myweek' && <MyWeek profile={profile} />}
