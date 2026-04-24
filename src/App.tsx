@@ -211,7 +211,7 @@ function extractStationSessions(workouts, stationId) {
       }
     }
   });
-  return sessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+  return sessions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 function computePBs(workouts) {
@@ -285,8 +285,8 @@ const CARBON_THEME = {
 const THEMES = { light: CARBON_THEME, dark: CARBON_THEME };
 
 let currentTheme = 'light';
-const themeSubscribers = new Set();
-function setThemeMode(mode) {
+const themeSubscribers = new Set<(m: any) => void>();
+function setThemeMode(mode: any) {
   currentTheme = mode;
   try { window.storage?.set('hyrox_theme', mode); } catch (e) {}
   themeSubscribers.forEach(fn => fn(mode));
@@ -294,14 +294,14 @@ function setThemeMode(mode) {
 function useTheme() {
   const [mode, setMode] = useState(currentTheme);
   useEffect(() => {
-    const fn = (m) => setMode(m);
+    const fn = (m: any) => setMode(m);
     themeSubscribers.add(fn);
-    return () => themeSubscribers.delete(fn);
+    return () => { themeSubscribers.delete(fn); };
   }, []);
   return { t: THEMES[mode], mode, setMode: setThemeMode };
 }
 
-function Pill({ color, grad, children, size = 'md' }) {
+function Pill({ color, grad, children, size = 'md' }: any) {
   const sizes = { sm: { fs: 10, p: '3px 9px' }, md: { fs: 12, p: '5px 11px' }, lg: { fs: 13, p: '7px 14px' } };
   const s = sizes[size];
   return <span style={{ background: grad || color + '18', color: grad ? '#fff' : color, fontSize: s.fs, fontWeight: 700, padding: s.p, borderRadius: 999, letterSpacing: 0.3, whiteSpace: 'nowrap', display: 'inline-block' }}>{children}</span>;
@@ -325,7 +325,7 @@ function StatCard({ label, value, sub, icon, grad }) {
   );
 }
 
-function SectionTitle({ children, action, accent }) {
+function SectionTitle({ children, action, accent }: any) {
   const { t } = useTheme();
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 22, marginTop: 8, paddingLeft: 2 }}>
@@ -374,7 +374,7 @@ const DEFAULT_PROFILE = {
   eventCity: 'Mumbai', eventDate: '2026-09-19', friends: [],
 };
 
-const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding }) {
+const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding }: any) {
   const { t } = useTheme();
   const initialData = { ...DEFAULT_PROFILE, userId: initial?.userId || genUserId(), ...initial };
   const [sex, setSex] = useState(initialData.sex);
@@ -388,7 +388,7 @@ const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding })
   const nameRef = useRef(null), ageRef = useRef(null), bwRef = useRef(null);
   const occRef = useRef(null), hrsRef = useRef(null), mealsRef = useRef(null);
 
-  const inp = { width: '100%', padding: '14px 16px', fontSize: 16, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box', fontFamily: FONT, transition: 'all 0.15s' };
+  const inp = { width: '100%', padding: '14px 16px', fontSize: 16, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: FONT, transition: 'all 0.15s' };
   const lbl = { fontSize: 13, color: t.textSec, marginBottom: 8, display: 'block', fontWeight: 600, letterSpacing: 0.2 };
 
   const handleSubmit = () => {
@@ -490,7 +490,7 @@ function ProfileView({ profile, onSave, onClearData }) {
   if (editing) return <ProfileForm initial={profile} onSave={(p) => { onSave(p); setEditing(false); }} />;
 
   const ageCategory = profile.age < 30 ? 'Open' : profile.age < 40 ? '30-39' : profile.age < 50 ? '40-49' : '50+';
-  const eventDays = Math.max(0, Math.floor((new Date(profile.eventDate) - new Date()) / 86400000));
+  const eventDays = Math.max(0, Math.floor((new Date(profile.eventDate).getTime() - new Date().getTime()) / 86400000));
   const row = (label, value) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: `1px solid ${t.border}`, fontSize: 15 }}>
       <span style={{ color: t.textSec }}>{label}</span>
@@ -588,13 +588,13 @@ function VoiceMemoRecorder({ transcript, setTranscript }) {
   const finalRef = useRef('');
 
   useEffect(() => {
-    const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+    const SR = typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
     if (!SR) setSupported(false);
   }, []);
 
   const start = async () => {
     setError(null);
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setError('Not supported.'); setSupported(false); return; }
     try {
       if (navigator.mediaDevices?.getUserMedia) await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -638,7 +638,7 @@ function VoiceMemoRecorder({ transcript, setTranscript }) {
       <textarea value={transcript || ''} onChange={e => setTranscript(e.target.value)}
         placeholder="Type or speak your reflection..."
         rows={3}
-        style={{ width: '100%', padding: '12px 14px', fontSize: 15, borderRadius: 12, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, boxSizing: 'border-box', resize: 'vertical', fontFamily: FONT, lineHeight: 1.5, position: 'relative' }} />
+        style={{ width: '100%', padding: '12px 14px', fontSize: 15, borderRadius: 12, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, boxSizing: 'border-box' as const, resize: 'vertical', fontFamily: FONT, lineHeight: 1.5, position: 'relative' }} />
       {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, padding: '8px 10px', background: '#FEE2E2', borderRadius: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
     </div>
   );
@@ -647,7 +647,7 @@ function VoiceMemoRecorder({ transcript, setTranscript }) {
 function computeCoverage(workout) {
   const coverage = {};
   if (workout.stations) {
-    Object.entries(workout.stations).forEach(([id, data]) => {
+    Object.entries(workout.stations).forEach(([id, data]: [string, any]) => {
       if (data.time) coverage[id] = { pct: 100, source: 'direct' };
     });
   }
@@ -713,7 +713,7 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
   const weekAgo = new Date(Date.now() - 7 * 86400000);
   const thisWeek = workouts.filter(w => new Date(w.date) >= weekAgo).length;
   const lastWorkout = workouts.length ? workouts[workouts.length - 1] : null;
-  const totalElements = workouts.reduce((a, w) => a + Object.values(w.stations || {}).filter(s => s.time).length + (w.translated?.length || 0), 0);
+  const totalElements = workouts.reduce((a: number, w: any) => a + Object.values(w.stations || {}).filter((s: any) => s.time).length + (w.translated?.length || 0), 0);
   const cumulative = cumulativeScore(workouts, pbs);
   const firstName = profile.name?.split(' ')[0] || 'athlete';
   const hour = new Date().getHours();
@@ -852,7 +852,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
     const list = [];
     for (const fid of (profile.friends || [])) {
       try {
-        const r = await window.storage.get(`athlete:${fid}`, true);
+        const r = await (window.storage.get as any)(`athlete:${fid}`, true);
         if (r) list.push({ ...JSON.parse(r.value), userId: fid });
       } catch (e) {}
     }
@@ -868,7 +868,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
     if (profile.friends?.includes(id)) { setError('Already added'); return; }
     setAdding(true);
     try {
-      const r = await window.storage.get(`athlete:${id}`, true);
+      const r = await (window.storage.get as any)(`athlete:${id}`, true);
       if (!r) { setError('No athlete found'); setAdding(false); return; }
       await saveProfile({ ...profile, friends: [...(profile.friends || []), id] });
       setAddId('');
@@ -960,7 +960,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
           <div style={{ fontSize: 13, color: t.textSec, marginBottom: 12 }}>Enter your friend's 6-character Athlete ID:</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
-              style={{ flex: 1, padding: '16px', fontSize: 20, fontWeight: 700, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box', fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, textAlign: 'center', textTransform: 'uppercase' }} />
+              style={{ flex: 1, padding: '16px', fontSize: 20, fontWeight: 700, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, textAlign: 'center', textTransform: 'uppercase' }} />
             <button onClick={addFriend} disabled={adding || !addId} style={{
               padding: '16px 24px', fontSize: 14, fontWeight: 700,
               background: adding || !addId ? t.borderInput : GRAD.orange, color: '#fff', border: 'none', borderRadius: 12,
@@ -1445,7 +1445,7 @@ function PostWorkoutInsight({ workout, allWorkouts, pbs, profile, onClose }) {
           const sc = computeStationScore(id, allWorkouts, pbs[id]);
           return sc?.isPB;
         }).map(([id]) => STATION_META[id]?.name).filter(Boolean);
-        const daysToRace = Math.max(0, Math.floor((new Date(profile.eventDate) - new Date()) / 86400000));
+        const daysToRace = Math.max(0, Math.floor((new Date(profile.eventDate).getTime() - new Date().getTime()) / 86400000));
         const weekAgo = new Date(Date.now() - 7 * 86400000);
         const weekCount = allWorkouts.filter(w => new Date(w.date) >= weekAgo).length;
 
@@ -1562,14 +1562,14 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
   const [insightFor, setInsightFor] = useState(null);
   const [testMode, setTestMode] = useState(false);
 
-  const inp = { width: '100%', padding: '13px 15px', fontSize: 15, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box', fontFamily: FONT, transition: 'all 0.15s' };
+  const inp = { width: '100%', padding: '13px 15px', fontSize: 15, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: FONT, transition: 'all 0.15s' };
   const lbl = { fontSize: 12, color: t.textSec, marginBottom: 8, display: 'block', fontWeight: 600, letterSpacing: 0.2 };
 
   const setStation = (id, field, val) => setStationData(prev => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
 
   const draft = {
     date, sessionType: mode,
-    stations: Object.entries(stationData).reduce((a, [id, d]) => {
+    stations: Object.entries(stationData).reduce((a: any, [id, d]: [string, any]) => {
       if (d.time || d.weight) a[id] = { time: parseMMSS(d.time), weight: d.weight ? parseFloat(d.weight) : null };
       return a;
     }, {}),
@@ -1678,7 +1678,7 @@ function Progress({ workouts, pbs }) {
   const chartData = getDataFor(selected);
   const pb = pbs[selected];
 
-  const Tip = ({ active, payload, label }) => !active || !payload?.length ? null : (
+  const Tip = ({ active, payload, label }: any = {}) => !active || !payload?.length ? null : (
     <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 14px', fontSize: 13, boxShadow: t.cardShadow }}>
       <div style={{ color: t.textSec }}>{label}</div>
       <div style={{ color: station.color, fontWeight: 700 }}>{fmtTime(payload[0]?.value)}</div>
@@ -1976,7 +1976,7 @@ function Countdown({ eventDate }) {
     if (!eventDate) return;
     const ed = new Date(eventDate);
     const tick = () => {
-      const diff = ed - new Date();
+      const diff = ed.getTime() - new Date().getTime();
       if (diff <= 0) { setT({ days: 0, hours: 0, mins: 0, secs: 0 }); return; }
       setT({ days: Math.floor(diff / 86400000), hours: Math.floor((diff % 86400000) / 3600000), mins: Math.floor((diff % 3600000) / 60000), secs: Math.floor((diff % 60000) / 1000) });
     };
