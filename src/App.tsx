@@ -99,19 +99,17 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     .anim-flicker { animation: hyrox-flicker 1.8s ease-in-out infinite; display: inline-block; }
     .anim-bounce { animation: hyrox-bounce 1.6s ease-in-out infinite; display: inline-block; }
     .anim-spin-soft { animation: hyrox-spin-soft 3s ease-in-out infinite; display: inline-block; }
-    /* Flip-clock digit animation — fires on each remount */
-    @keyframes hyrox-flip {
-      0%   { transform: rotateX(0deg); opacity: 1; }
-      45%  { transform: rotateX(90deg); opacity: 0.4; }
-      55%  { transform: rotateX(-90deg); opacity: 0.4; }
+    /* Split-flap flip-clock animation */
+    @keyframes flip-top-down {
+      0%   { transform: rotateX(0deg); }
+      100% { transform: rotateX(-90deg); opacity: 0; }
+    }
+    @keyframes flip-bottom-up {
+      0%   { transform: rotateX(90deg); opacity: 0; }
       100% { transform: rotateX(0deg); opacity: 1; }
     }
-    .flip-digit {
-      display: inline-block;
-      animation: hyrox-flip 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-      transform-origin: 50% 50%;
-      backface-visibility: hidden;
-    }
+    .flap-top { transform-origin: bottom; animation: flip-top-down 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .flap-bottom { transform-origin: top; opacity: 0; animation: flip-bottom-up 0.3s cubic-bezier(0.4,0,0.2,1) 0.3s forwards; }
     @media (prefers-reduced-motion: reduce) {
       .anim-wave, .anim-flicker, .anim-bounce, .anim-spin-soft { animation: none; }
     }
@@ -2005,18 +2003,59 @@ function Countdown({ eventDate }) {
   }, [eventDate]);
 
   return (
-    <div style={{ display: 'flex', gap: 10, perspective: '600px' }}>
-      {[{ label: 'D', val: t.days }, { label: 'H', val: t.hours }, { label: 'M', val: t.mins }, { label: 'S', val: t.secs }].map(({ label, val }) => {
-        const display = String(val).padStart(2, '0');
-        return (
-          <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', padding: '8px 10px', borderRadius: 10, minWidth: 42, border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: ACC_BRIGHT, lineHeight: 1, letterSpacing: -0.5 }}>
-              <span key={display} className="flip-digit">{display}</span>
+    <div style={{ display: 'flex', gap: 8, perspective: '300px' }}>
+      {[{ label: 'D', val: t.days }, { label: 'H', val: t.hours }, { label: 'M', val: t.mins }, { label: 'S', val: t.secs }].map(({ label, val }) => (
+        <FlipUnit key={label} value={val} label={label} />
+      ))}
+    </div>
+  );
+}
+
+function FlipUnit({ value, label }: { value: number; label: string }) {
+  const display = String(value).padStart(2, '0');
+  const [prev, setPrev] = useState(display);
+  const [flipKey, setFlipKey] = useState(0);
+
+  useEffect(() => {
+    if (display !== prev) {
+      setFlipKey((k) => k + 1);
+      const id = window.setTimeout(() => setPrev(display), 600);
+      return () => window.clearTimeout(id);
+    }
+  }, [display, prev]);
+
+  const flipping = display !== prev;
+  const cardW = 38, cardH = 32, fontSz = 22, lh = 32;
+  const halfStyle: React.CSSProperties = { position: 'absolute', left: 0, right: 0, height: '50%', overflow: 'hidden', display: 'flex', justifyContent: 'center', background: 'rgba(255,255,255,0.06)' };
+  const digitStyle: React.CSSProperties = { fontSize: fontSz, fontWeight: 800, color: ACC_BRIGHT, lineHeight: `${lh}px`, letterSpacing: '-0.5px', fontFamily: FONT };
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ position: 'relative', width: cardW, height: cardH, borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 6px rgba(0,0,0,0.4)' }}>
+        {/* Top static: top half of NEW digit (revealed as flap falls away) */}
+        <div style={{ ...halfStyle, top: 0, alignItems: 'flex-start' }}>
+          <span style={digitStyle}>{display}</span>
+        </div>
+        {/* Bottom static: bottom half of OLD digit (still visible until bottom flap completes) */}
+        <div style={{ ...halfStyle, bottom: 0, alignItems: 'flex-end' }}>
+          <span style={{ ...digitStyle, transform: `translateY(-${lh / 2}px)` }}>{prev}</span>
+        </div>
+        {/* Seam line */}
+        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.55)', marginTop: -0.5, zIndex: 3 }} />
+        {flipping && (
+          <>
+            {/* Top flap: shows OLD top half, rotates down/away */}
+            <div key={`t-${flipKey}`} className="flap-top" style={{ ...halfStyle, top: 0, alignItems: 'flex-start', zIndex: 4 }}>
+              <span style={digitStyle}>{prev}</span>
             </div>
-            <div style={{ fontSize: 9, color: '#9ca3af', letterSpacing: 1, marginTop: 3, fontWeight: 700 }}>{label}</div>
-          </div>
-        );
-      })}
+            {/* Bottom flap: shows NEW bottom half, rotates up into place */}
+            <div key={`b-${flipKey}`} className="flap-bottom" style={{ ...halfStyle, bottom: 0, alignItems: 'flex-end', zIndex: 4 }}>
+              <span style={{ ...digitStyle, transform: `translateY(-${lh / 2}px)` }}>{display}</span>
+            </div>
+          </>
+        )}
+      </div>
+      <div style={{ fontSize: 9, color: '#9ca3af', letterSpacing: 1, marginTop: 5, fontWeight: 700 }}>{label}</div>
     </div>
   );
 }
