@@ -1134,20 +1134,23 @@ function TranslateMode({ translated, setTranslated, inp, lbl }) {
         })}
       </div>
 
-      {ex && (
-        <div style={{ background: t.card, border: `2px solid ${color}`, borderRadius: 18, padding: 18, marginBottom: 16, boxShadow: `0 8px 24px ${color}20`, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: grad }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: t.text }}>{ex.name}</div>
-            <Pill grad={grad}>→ {meta.abbr}</Pill>
+      {ex && (() => {
+        const compactInp = { ...inp, padding: '9px 12px', fontSize: 14, borderRadius: 9 };
+        const compactLbl = { ...lbl, fontSize: 10, marginBottom: 5 };
+        return (
+        <div style={{ background: t.card, border: `1.5px solid ${color}`, borderRadius: 14, padding: 14, marginBottom: 14, boxShadow: `0 4px 16px ${color}15`, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: grad }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{ex.name}</div>
+            <Pill grad={grad} size="sm">→ {meta.abbr}</Pill>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ex.fields.length}, 1fr)`, gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ex.fields.length}, 1fr)`, gap: 8, marginBottom: 10 }}>
             {ex.fields.map(f => (
               <div key={f.k}>
-                <label style={lbl}>{f.l.toUpperCase()}</label>
+                <label style={compactLbl}>{f.l.toUpperCase()}</label>
                 <input type={f.type === 'text' ? 'text' : 'number'} step={f.type === 'speed' ? '0.1' : undefined} placeholder={String(f.d ?? '')} value={vals[f.k] ?? ''}
                   onChange={e => setVals({ ...vals, [f.k]: e.target.value })}
-                  style={inp} />
+                  style={compactInp} />
               </div>
             ))}
           </div>
@@ -1167,17 +1170,18 @@ function TranslateMode({ translated, setTranslated, inp, lbl }) {
               </div>
             );
           })()}
-          <div style={{ background: grad, color: '#fff', borderRadius: 14, padding: '16px 18px', marginBottom: 14, boxShadow: `0 8px 20px ${color}30` }}>
-            <div style={{ fontSize: 11, letterSpacing: 1.5, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', opacity: 0.9 }}>Hyrox Equivalent</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-              <span style={{ fontSize: 32, fontWeight: 800, letterSpacing: -1 }}>{preview}</span>
-              <span style={{ fontSize: 14, opacity: 0.9 }}>{meta.unit} of {meta.name}</span>
+          <div style={{ background: grad, color: '#fff', borderRadius: 10, padding: '11px 14px', marginBottom: 10, boxShadow: `0 4px 14px ${color}25` }}>
+            <div style={{ fontSize: 10, letterSpacing: 1.4, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', opacity: 0.9 }}>Hyrox Equivalent</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+              <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.7 }}>{preview}</span>
+              <span style={{ fontSize: 12, opacity: 0.9 }}>{meta.unit} of {meta.name}</span>
             </div>
-            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 6 }}>{pct}% of race target · {ex.match}% pattern match</div>
+            <div style={{ fontSize: 11, opacity: 0.85, marginTop: 4 }}>{pct}% of race target · {ex.match}% pattern match</div>
           </div>
-          <button onClick={handleAdd} style={{ width: '100%', padding: '14px', fontSize: 15, fontWeight: 700, background: grad, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: `0 4px 14px ${color}30` }}>+ ADD TO WORKOUT</button>
+          <button onClick={handleAdd} style={{ width: '100%', padding: '11px', fontSize: 13, fontWeight: 700, background: grad, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: FONT, boxShadow: `0 3px 10px ${color}25` }}>+ ADD TO WORKOUT</button>
         </div>
-      )}
+        );
+      })()}
 
       {translated.length > 0 && (
         <div style={{ marginTop: 18 }}>
@@ -1266,21 +1270,23 @@ function DirectMode({ stationData, setStation, runCount, setRunCount, runPace, s
           </div>
         )}
       </div>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>Stations</div>
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 10, textTransform: 'uppercase' }}>Stations</div>
+      <div style={{ display: 'grid', gap: 8 }}>
         {STATIONS.map(s => {
           const d = stationData[s.id] || {};
           const active = d.time || d.weight;
+          const compactInp = { ...inp, padding: '9px 12px', fontSize: 14, borderRadius: 9 };
+          const compactLbl = { ...lbl, fontSize: 10, marginBottom: 5 };
           return (
-            <div key={s.id} style={{ background: t.card, border: `1.5px solid ${active ? s.color : t.border}`, borderRadius: 16, padding: '14px 16px', boxShadow: active ? `0 4px 16px ${s.color}20` : t.cardShadow, position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: s.grad }} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingLeft: 4 }}>
-                <div><span style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{s.name}</span><span style={{ fontSize: 12, color: t.textSec, marginLeft: 8 }}>{s.desc}</span></div>
+            <div key={s.id} style={{ background: t.card, border: `1px solid ${active ? s.color : t.border}`, borderRadius: 12, padding: '10px 12px', boxShadow: active ? `0 2px 10px ${s.color}20` : t.cardShadow, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: s.grad }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7, paddingLeft: 4 }}>
+                <div><span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{s.name}</span><span style={{ fontSize: 11, color: t.textSec, marginLeft: 6 }}>{s.desc}</span></div>
                 <Pill grad={s.grad} size="sm">{s.abbr}</Pill>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: s.hasWeight ? '1fr 1fr' : '1fr', gap: 10, paddingLeft: 4 }}>
-                <div><label style={lbl}>TIME (MM:SS)</label><input type="text" placeholder="4:30" value={d.time || ''} onChange={e => setStation(s.id, 'time', e.target.value)} style={inp} /></div>
-                {s.hasWeight && <div><label style={lbl}>WEIGHT (KG)</label><input type="number" step="2.5" placeholder="0" value={d.weight || ''} onChange={e => setStation(s.id, 'weight', e.target.value)} style={inp} /></div>}
+              <div style={{ display: 'grid', gridTemplateColumns: s.hasWeight ? '1fr 1fr' : '1fr', gap: 8, paddingLeft: 4 }}>
+                <div><label style={compactLbl}>TIME (MM:SS)</label><input type="text" placeholder="4:30" value={d.time || ''} onChange={e => setStation(s.id, 'time', e.target.value)} style={compactInp} /></div>
+                {s.hasWeight && <div><label style={compactLbl}>WEIGHT (KG)</label><input type="number" step="2.5" placeholder="0" value={d.weight || ''} onChange={e => setStation(s.id, 'weight', e.target.value)} style={compactInp} /></div>}
               </div>
             </div>
           );
@@ -1986,11 +1992,11 @@ function Countdown({ eventDate }) {
   }, [eventDate]);
 
   return (
-    <div style={{ display: 'flex', gap: 10 }}>
+    <div style={{ display: 'flex', gap: 5 }}>
       {[{ label: 'D', val: t.days }, { label: 'H', val: t.hours }, { label: 'M', val: t.mins }, { label: 'S', val: t.secs }].map(({ label, val }) => (
-        <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', padding: '8px 10px', borderRadius: 10, minWidth: 42, border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: ACC_BRIGHT, lineHeight: 1, letterSpacing: -0.5 }}>{String(val).padStart(2, '0')}</div>
-          <div style={{ fontSize: 9, color: '#9ca3af', letterSpacing: 1, marginTop: 3, fontWeight: 700 }}>{label}</div>
+        <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', padding: '5px 7px', borderRadius: 8, minWidth: 32, border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: ACC_BRIGHT, lineHeight: 1, letterSpacing: -0.3 }}>{String(val).padStart(2, '0')}</div>
+          <div style={{ fontSize: 8, color: '#9ca3af', letterSpacing: 0.8, marginTop: 2, fontWeight: 700 }}>{label}</div>
         </div>
       ))}
     </div>
