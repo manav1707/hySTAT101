@@ -99,17 +99,19 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     .anim-flicker { animation: hyrox-flicker 1.8s ease-in-out infinite; display: inline-block; }
     .anim-bounce { animation: hyrox-bounce 1.6s ease-in-out infinite; display: inline-block; }
     .anim-spin-soft { animation: hyrox-spin-soft 3s ease-in-out infinite; display: inline-block; }
-    /* Split-flap flip-clock animation */
-    @keyframes flip-top-down {
-      0%   { transform: rotateX(0deg); }
-      100% { transform: rotateX(-90deg); opacity: 0; }
+    /* Full-card flip — single rotateX swap */
+    @keyframes hyrox-card-flip {
+      0%   { transform: rotateX(0deg);   opacity: 1; }
+      49%  { transform: rotateX(90deg);  opacity: 0.4; }
+      51%  { transform: rotateX(-90deg); opacity: 0.4; }
+      100% { transform: rotateX(0deg);   opacity: 1; }
     }
-    @keyframes flip-bottom-up {
-      0%   { transform: rotateX(90deg); opacity: 0; }
-      100% { transform: rotateX(0deg); opacity: 1; }
+    .card-flip {
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+      animation: hyrox-card-flip 0.32s cubic-bezier(0.4,0,0.2,1);
+      transform-origin: 50% 50%;
     }
-    .flap-top { transform-origin: bottom; will-change: transform, opacity; backface-visibility: hidden; animation: flip-top-down 0.18s cubic-bezier(0.4,0,0.2,1) forwards; }
-    .flap-bottom { transform-origin: top; opacity: 0; will-change: transform, opacity; backface-visibility: hidden; animation: flip-bottom-up 0.18s cubic-bezier(0.4,0,0.2,1) 0.18s forwards; }
     @media (prefers-reduced-motion: reduce) {
       .anim-wave, .anim-flicker, .anim-bounce, .anim-spin-soft { animation: none; }
     }
@@ -2013,47 +2015,32 @@ function Countdown({ eventDate }) {
 
 function FlipUnit({ value, label }: { value: number; label: string }) {
   const display = String(value).padStart(2, '0');
-  const [prev, setPrev] = useState(display);
   const [flipKey, setFlipKey] = useState(0);
+  const lastRef = useRef(display);
 
   useEffect(() => {
-    if (display !== prev) {
+    if (lastRef.current !== display) {
+      lastRef.current = display;
       setFlipKey((k) => k + 1);
-      const id = window.setTimeout(() => setPrev(display), 360);
-      return () => window.clearTimeout(id);
     }
-  }, [display, prev]);
-
-  const flipping = display !== prev;
-  const cardW = 38, cardH = 32, fontSz = 22, lh = 32;
-  const halfStyle: React.CSSProperties = { position: 'absolute', left: 0, right: 0, height: '50%', overflow: 'hidden', display: 'flex', justifyContent: 'center', background: 'rgba(255,255,255,0.06)' };
-  const digitStyle: React.CSSProperties = { fontSize: fontSz, fontWeight: 800, color: ACC_BRIGHT, lineHeight: `${lh}px`, letterSpacing: '-0.5px', fontFamily: FONT };
+  }, [display]);
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ position: 'relative', width: cardW, height: cardH, borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 6px rgba(0,0,0,0.4)' }}>
-        {/* Top static: top half of NEW digit (revealed as flap falls away) */}
-        <div style={{ ...halfStyle, top: 0, alignItems: 'flex-start' }}>
-          <span style={digitStyle}>{display}</span>
+      <div style={{
+        position: 'relative', width: 38, height: 32, borderRadius: 7,
+        border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
+        background: 'rgba(255,255,255,0.06)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 6px rgba(0,0,0,0.4)',
+      }}>
+        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.4)', marginTop: -0.5, zIndex: 2 }} />
+        <div
+          key={flipKey}
+          className="card-flip"
+          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: ACC_BRIGHT, letterSpacing: '-0.5px', fontFamily: FONT }}
+        >
+          {display}
         </div>
-        {/* Bottom static: bottom half of OLD digit (still visible until bottom flap completes) */}
-        <div style={{ ...halfStyle, bottom: 0, alignItems: 'flex-end' }}>
-          <span style={{ ...digitStyle, transform: `translateY(-${lh / 2}px)` }}>{prev}</span>
-        </div>
-        {/* Seam line */}
-        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(0,0,0,0.55)', marginTop: -0.5, zIndex: 3 }} />
-        {flipping && (
-          <>
-            {/* Top flap: shows OLD top half, rotates down/away */}
-            <div key={`t-${flipKey}`} className="flap-top" style={{ ...halfStyle, top: 0, alignItems: 'flex-start', zIndex: 4 }}>
-              <span style={digitStyle}>{prev}</span>
-            </div>
-            {/* Bottom flap: shows NEW bottom half, rotates up into place */}
-            <div key={`b-${flipKey}`} className="flap-bottom" style={{ ...halfStyle, bottom: 0, alignItems: 'flex-end', zIndex: 4 }}>
-              <span style={{ ...digitStyle, transform: `translateY(-${lh / 2}px)` }}>{display}</span>
-            </div>
-          </>
-        )}
       </div>
       <div style={{ fontSize: 9, color: '#9ca3af', letterSpacing: 1, marginTop: 5, fontWeight: 700 }}>{label}</div>
     </div>
@@ -2195,13 +2182,17 @@ export default function HyroxTracker() {
 
   return (
     <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh' }}>
-      <div style={{ background: t.headerBg, padding: '22px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-        <div>
-          <div style={{ fontSize: 10, letterSpacing: 2.5, color: ACC_BRIGHT, fontWeight: 800, marginBottom: 6, textTransform: 'uppercase' }}>Hyrox · {profile.eventCity}</div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: '#fff', letterSpacing: -0.7 }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 3, fontWeight: 500 }}>{new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+      <div style={{ background: t.headerBg, padding: '28px 26px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${ACC} 30%, ${ACC} 70%, transparent)`, opacity: 0.7 }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 10, letterSpacing: 3, color: ACC, fontWeight: 800, marginBottom: 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACC, boxShadow: `0 0 8px ${ACC}` }} />
+            Hyrox · {profile.eventCity}
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1 }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
+          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6, fontWeight: 500, letterSpacing: 0.3 }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, position: 'relative' }}>
           <Countdown eventDate={profile.eventDate} />
         </div>
       </div>
