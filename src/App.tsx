@@ -99,6 +99,19 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     .anim-flicker { animation: hyrox-flicker 1.8s ease-in-out infinite; display: inline-block; }
     .anim-bounce { animation: hyrox-bounce 1.6s ease-in-out infinite; display: inline-block; }
     .anim-spin-soft { animation: hyrox-spin-soft 3s ease-in-out infinite; display: inline-block; }
+    /* Flip-clock digit animation — fires on each remount */
+    @keyframes hyrox-flip {
+      0%   { transform: rotateX(0deg); opacity: 1; }
+      45%  { transform: rotateX(90deg); opacity: 0.4; }
+      55%  { transform: rotateX(-90deg); opacity: 0.4; }
+      100% { transform: rotateX(0deg); opacity: 1; }
+    }
+    .flip-digit {
+      display: inline-block;
+      animation: hyrox-flip 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: 50% 50%;
+      backface-visibility: hidden;
+    }
     @media (prefers-reduced-motion: reduce) {
       .anim-wave, .anim-flicker, .anim-bounce, .anim-spin-soft { animation: none; }
     }
@@ -1992,13 +2005,18 @@ function Countdown({ eventDate }) {
   }, [eventDate]);
 
   return (
-    <div style={{ display: 'flex', gap: 5 }}>
-      {[{ label: 'D', val: t.days }, { label: 'H', val: t.hours }, { label: 'M', val: t.mins }, { label: 'S', val: t.secs }].map(({ label, val }) => (
-        <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', padding: '5px 7px', borderRadius: 8, minWidth: 32, border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: ACC_BRIGHT, lineHeight: 1, letterSpacing: -0.3 }}>{String(val).padStart(2, '0')}</div>
-          <div style={{ fontSize: 8, color: '#9ca3af', letterSpacing: 0.8, marginTop: 2, fontWeight: 700 }}>{label}</div>
-        </div>
-      ))}
+    <div style={{ display: 'flex', gap: 10, perspective: '600px' }}>
+      {[{ label: 'D', val: t.days }, { label: 'H', val: t.hours }, { label: 'M', val: t.mins }, { label: 'S', val: t.secs }].map(({ label, val }) => {
+        const display = String(val).padStart(2, '0');
+        return (
+          <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', padding: '8px 10px', borderRadius: 10, minWidth: 42, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: ACC_BRIGHT, lineHeight: 1, letterSpacing: -0.5 }}>
+              <span key={display} className="flip-digit">{display}</span>
+            </div>
+            <div style={{ fontSize: 9, color: '#9ca3af', letterSpacing: 1, marginTop: 3, fontWeight: 700 }}>{label}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
