@@ -108,8 +108,8 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
       0%   { transform: rotateX(90deg); opacity: 0; }
       100% { transform: rotateX(0deg); opacity: 1; }
     }
-    .flap-top { transform-origin: bottom; animation: flip-top-down 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
-    .flap-bottom { transform-origin: top; opacity: 0; animation: flip-bottom-up 0.3s cubic-bezier(0.4,0,0.2,1) 0.3s forwards; }
+    .flap-top { transform-origin: bottom; will-change: transform, opacity; backface-visibility: hidden; animation: flip-top-down 0.18s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .flap-bottom { transform-origin: top; opacity: 0; will-change: transform, opacity; backface-visibility: hidden; animation: flip-bottom-up 0.18s cubic-bezier(0.4,0,0.2,1) 0.18s forwards; }
     @media (prefers-reduced-motion: reduce) {
       .anim-wave, .anim-flicker, .anim-bounce, .anim-spin-soft { animation: none; }
     }
@@ -2019,7 +2019,7 @@ function FlipUnit({ value, label }: { value: number; label: string }) {
   useEffect(() => {
     if (display !== prev) {
       setFlipKey((k) => k + 1);
-      const id = window.setTimeout(() => setPrev(display), 600);
+      const id = window.setTimeout(() => setPrev(display), 360);
       return () => window.clearTimeout(id);
     }
   }, [display, prev]);
