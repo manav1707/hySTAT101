@@ -385,7 +385,85 @@ const DEFAULT_PROFILE = {
   occupation: '', shift: 'day', workHours: 9, meals: 3,
   level: 'intermediate', athleteType: 'hybrid',
   eventCity: 'Mumbai', eventDate: '2026-09-19', friends: [],
+  hasExistingRoutine: false, trainingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  equipment: 'full', currentRoutine: '',
 };
+
+const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const EQUIPMENT_SUBS = {
+  full: {},
+  standard: {
+    'Sled Push': 'Heavy reverse lunges',
+    'Sled Pull': 'Bent-over row + farmer walk',
+    'SkiErg': 'Rower (or DB swings)',
+    'Wall Balls': 'DB squat-to-press',
+    'Sandbag Lunges': 'Goblet lunges',
+    "Farmer's Carry": 'DB carry',
+    "Farmer's": 'DB carry',
+  },
+  home: {
+    'Sled Push': 'Walking lunges + backpack',
+    'Sled Pull': 'Backpack rows',
+    'SkiErg': 'High-knees + jumping jacks',
+    'Wall Balls': 'BW squat-to-press',
+    'Sandbag Lunges': 'BW lunges + backpack',
+    "Farmer's Carry": 'Backpack carry',
+    "Farmer's": 'Backpack carry',
+    'Bench': 'Push-ups',
+    'Deadlifts': 'DB single-leg deadlift',
+    'Deadlift': 'DB single-leg deadlift',
+    'Squats': 'DB / BW squats',
+    'Squat': 'DB / BW squat',
+    'Rows': 'Backpack rows',
+    'Power Cleans': 'DB clean-and-press',
+  },
+};
+
+const EQUIPMENT_LABEL = {
+  full: 'Full Hyrox gym',
+  standard: 'Standard gym',
+  home: 'Home / minimal',
+};
+
+function applyEquipment(text, tier) {
+  if (!tier || tier === 'full') return { text, swapped: false, originals: [] };
+  const subs = EQUIPMENT_SUBS[tier];
+  if (!subs) return { text, swapped: false, originals: [] };
+  let out = text;
+  const originals = [];
+  for (const from of Object.keys(subs).sort((a, b) => b.length - a.length)) {
+    if (out.includes(from)) {
+      originals.push(from);
+      out = out.split(from).join(subs[from]);
+    }
+  }
+  return { text: out, swapped: originals.length > 0, originals };
+}
+
+function getEquipmentStationOverride(text, equipment) {
+  if (!equipment || equipment === 'full') return null;
+  const lower = (text || '').toLowerCase();
+  if (equipment === 'home') {
+    if (lower.includes('lunges + backpack') || lower.includes('lunge + backpack')) return 'sledPush';
+    if (lower.includes('backpack row')) return 'sledPull';
+    if (lower.includes('high-knee') || lower.includes('high knee') || lower.includes('jumping jack')) return 'skierg';
+    if (lower.includes('backpack carry')) return 'farmers';
+    if (lower.includes('squat-to-press') || lower.includes('squat to press')) return 'wallballs';
+    if (lower.includes('push-up') || lower.includes('pushup') || lower.includes('push up')) return 'sledPush';
+    if (lower.includes('single-leg deadlift') || lower.includes('single leg deadlift')) return 'sledPull';
+    if (lower.includes('clean-and-press') || lower.includes('clean and press')) return 'sledPush';
+  }
+  if (equipment === 'standard') {
+    if (lower.includes('reverse lunge')) return 'sledPush';
+    if (lower.includes('bent-over row') && lower.includes('farmer')) return 'sledPull';
+    if (lower.includes('rower') || lower.includes('db swing')) return 'skierg';
+    if (lower.includes('squat-to-press') || lower.includes('squat to press')) return 'wallballs';
+    if (lower.includes('db carry')) return 'farmers';
+    if (lower.includes('goblet lunge')) return 'lunges';
+  }
+  return null;
+}
 
 const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding }: any) {
   const { t } = useTheme();
@@ -396,7 +474,17 @@ const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding }:
   const [athleteType, setAthleteType] = useState(initialData.athleteType);
   const [eventCity, setEventCity] = useState(initialData.eventCity);
   const [eventDate, setEventDate] = useState(initialData.eventDate);
+  const [hasExistingRoutine, setHasExistingRoutine] = useState(!!initialData.hasExistingRoutine);
+  const [trainingDays, setTrainingDays] = useState(
+    Array.isArray(initialData.trainingDays) && initialData.trainingDays.length ? initialData.trainingDays : ALL_DAYS
+  );
+  const [equipment, setEquipment] = useState(initialData.equipment || 'full');
+  const routineRef = useRef(null);
   const [error, setError] = useState('');
+
+  const toggleDay = (d) => setTrainingDays(prev =>
+    prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+  );
 
   const nameRef = useRef(null), ageRef = useRef(null), bwRef = useRef(null);
   const occRef = useRef(null), hrsRef = useRef(null), mealsRef = useRef(null);
@@ -412,7 +500,10 @@ const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding }:
     const workHours = parseInt(hrsRef.current?.value) || 9;
     const meals = parseInt(mealsRef.current?.value) || 3;
     if (!name || !age || !bodyweight || !eventDate) { setError('Please fill name, age, bodyweight and event date.'); return; }
-    onSave({ ...initialData, name, age, bodyweight, occupation, workHours, meals, sex, shift, level, athleteType, eventCity, eventDate });
+    if (hasExistingRoutine && trainingDays.length === 0) { setError('Pick at least one training day, or switch to "Starting fresh".'); return; }
+    const finalTrainingDays = hasExistingRoutine ? trainingDays : ALL_DAYS;
+    const currentRoutine = hasExistingRoutine ? (routineRef.current?.value || '').trim() : '';
+    onSave({ ...initialData, name, age, bodyweight, occupation, workHours, meals, sex, shift, level, athleteType, eventCity, eventDate, hasExistingRoutine, trainingDays: finalTrainingDays, equipment, currentRoutine });
   };
 
   const handleCityChange = (e) => {
@@ -472,6 +563,53 @@ const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding }:
             { v: 'endurance', l: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Activity} size={14} /> Endurance</span> },
           ]} />
         </div>
+      </FormSection>
+
+      <FormSection title="Current Routine">
+        <div style={{ marginBottom: 16 }}><label style={lbl}>EQUIPMENT YOU CAN ACCESS</label>
+          <Seg value={equipment} onChange={setEquipment} options={[
+            { v: 'full', l: 'Full Hyrox' },
+            { v: 'standard', l: 'Standard gym' },
+            { v: 'home', l: 'Home / minimal' },
+          ]} />
+          <div style={{ fontSize: 12, color: t.textMute, marginTop: 8, lineHeight: 1.5 }}>
+            We'll swap Hyrox-specific exercises (sled, ski erg, wall balls...) for what you actually have.
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}><label style={lbl}>DO YOU TRAIN REGULARLY ALREADY?</label>
+          <Seg value={hasExistingRoutine ? 'yes' : 'no'} onChange={(v) => setHasExistingRoutine(v === 'yes')} options={[
+            { v: 'no', l: 'Starting fresh' },
+            { v: 'yes', l: 'Yes, I train' },
+          ]} />
+        </div>
+        {hasExistingRoutine && (
+          <>
+            <div style={{ marginBottom: 16 }}>
+              <label style={lbl}>WHICH DAYS DO YOU TRAIN?</label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {ALL_DAYS.map(d => {
+                  const on = trainingDays.includes(d);
+                  return (
+                    <button key={d} type="button" onClick={() => toggleDay(d)} style={{
+                      padding: '10px 14px', fontSize: 13, fontWeight: 700, fontFamily: FONT,
+                      borderRadius: 10, cursor: 'pointer', minWidth: 56,
+                      border: `1.5px solid ${on ? ACC : t.borderInput}`,
+                      background: on ? GRAD.orange : t.inputBg,
+                      color: on ? '#fff' : t.text,
+                      transition: 'all 0.15s',
+                    }}>{d}</button>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 12, color: t.textMute, marginTop: 8, lineHeight: 1.5 }}>Non-selected days will be marked as rest in your week. You can change this later.</div>
+            </div>
+            <div>
+              <label style={lbl}>PASTE YOUR CURRENT ROUTINE (OPTIONAL)</label>
+              <textarea ref={routineRef} defaultValue={initialData.currentRoutine || ''} placeholder={"e.g.\nMon: Squats 4×6, Bench 4×6\nWed: 5km tempo run\nFri: Deadlifts 4×5, Farmers carry"} style={{ ...inp, minHeight: 110, resize: 'vertical', fontFamily: FONT, lineHeight: 1.5 }} />
+              <div style={{ fontSize: 12, color: t.textMute, marginTop: 8, lineHeight: 1.5 }}>We'll show this on your Week tab so you can compare your routine with the prescribed plan.</div>
+            </div>
+          </>
+        )}
       </FormSection>
 
       <FormSection title="Target Event">
@@ -1005,7 +1143,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
   );
 }
 
-function PasteParser({ onImport, lbl, inp }) {
+function PasteParser({ onImport, lbl, inp, equipment }) {
   const { t } = useTheme();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
@@ -1045,7 +1183,9 @@ function PasteParser({ onImport, lbl, inp }) {
         if (distKm && f.k === 'distance') vals[f.k] = parseFloat(distKm[1]);
         if (level && f.k === 'level') vals[f.k] = parseInt(level[1]);
       }
-      parsed.push({ original: line, exId: match.id, name: match.name, station: match.station, match: match.match, inputs: vals, val: match.calc(vals) });
+      const overrideStation = getEquipmentStationOverride(line, equipment);
+      const finalStation = overrideStation || match.station;
+      parsed.push({ original: line, exId: match.id, name: match.name, station: finalStation, match: match.match, inputs: vals, val: match.calc(vals) });
     }
     return parsed;
   };
@@ -1091,7 +1231,7 @@ function PasteParser({ onImport, lbl, inp }) {
   );
 }
 
-function TranslateMode({ translated, setTranslated, inp, lbl }) {
+function TranslateMode({ translated, setTranslated, inp, lbl, equipment }) {
   const { t } = useTheme();
   const [picker, setPicker] = useState('');
   const [vals, setVals] = useState({});
@@ -1123,7 +1263,7 @@ function TranslateMode({ translated, setTranslated, inp, lbl }) {
 
   return (
     <div>
-      <PasteParser onImport={(items) => setTranslated([...translated, ...items])} lbl={lbl} inp={inp} />
+      <PasteParser onImport={(items) => setTranslated([...translated, ...items])} lbl={lbl} inp={inp} equipment={equipment} />
 
       <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>Or Pick Manually</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: 10, marginBottom: 18 }}>
@@ -1648,7 +1788,7 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
       <div style={{ marginBottom: 16 }}><label style={lbl}>DATE</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
 
       {mode === 'translate'
-        ? <TranslateMode translated={translated} setTranslated={setTranslated} inp={inp} lbl={lbl} />
+        ? <TranslateMode translated={translated} setTranslated={setTranslated} inp={inp} lbl={lbl} equipment={profile.equipment} />
         : <DirectMode stationData={stationData} setStation={setStation} runCount={runCount} setRunCount={setRunCount} runPace={runPace} setRunPace={setRunPace} inp={inp} lbl={lbl} />}
 
       {hasAny && (
@@ -1828,15 +1968,172 @@ function Progress({ workouts, pbs }) {
   );
 }
 
-const WEEKLY = [
-  { day: 'Mon', label: 'Push', color: '#7C3AED', grad: GRAD.purple, sessions: ['Squats 3×8', 'Bench 3×8', '4km Run @ 8.5 km/hr'], hyrox: ['WB', 'SP'] },
-  { day: 'Tue', label: 'Pull', color: '#2563EB', grad: GRAD.blue, sessions: ['Deadlifts 3×5', 'Rows 3×12', '5km Cycle @ Lvl 18', '15 Burpees/km'], hyrox: ['SL', 'SKI', 'BBJ'] },
-  { day: 'Wed', label: 'Recovery', color: '#059669', grad: GRAD.green, sessions: ['Steam Room', 'Hip & Ankle Mobility'], hyrox: [] },
-  { day: 'Thu', label: 'Engine', color: ACC, grad: GRAD.orange, sessions: ['DB Thrusters 5×15', '8× (1km @ 11km/hr + 1min rest)'], hyrox: ['WB', 'RUN'] },
-  { day: 'Fri', label: 'Hybrid', color: '#D97706', grad: GRAD.amber, sessions: ["Farmer's Carries 4×40m", 'Walking Lunges 3×20', '3km Run', 'Steam'], hyrox: ['FC', 'SBL'] },
-  { day: 'Sat', label: 'Long Run', color: '#0891B2', grad: GRAD.teal, sessions: ['6–8km Zone 2'], hyrox: ['RUN'] },
-  { day: 'Sun', label: 'Rest', color: '#8E8E93', grad: 'linear-gradient(135deg, #D1D5DB 0%, #6B7280 100%)', sessions: ['Full rest'], hyrox: [] },
+const DAY_STYLE = {
+  Mon: { color: '#7C3AED', grad: GRAD.purple },
+  Tue: { color: '#2563EB', grad: GRAD.blue },
+  Wed: { color: '#059669', grad: GRAD.green },
+  Thu: { color: ACC, grad: GRAD.orange },
+  Fri: { color: '#D97706', grad: GRAD.amber },
+  Sat: { color: '#0891B2', grad: GRAD.teal },
+  Sun: { color: '#8E8E93', grad: 'linear-gradient(135deg, #D1D5DB 0%, #6B7280 100%)' },
+};
+
+const REST_DAY = { day: 'Sun', label: 'Rest', sessions: ['Full rest'], hyrox: [] };
+const RECOVERY_DAY = { day: 'Wed', label: 'Recovery', sessions: ['Mobility', 'Steam / sauna'], hyrox: [] };
+
+const PHASE_TEMPLATES = {
+  strength: {
+    BASE: [
+      { day: 'Mon', label: 'Push', sessions: ['Squats 3×8', 'Bench 3×8', '3km Z2 run'], hyrox: ['SP', 'WB'] },
+      { day: 'Tue', label: 'Engine intro', sessions: ['4×800m easy', 'SkiErg 3×500m'], hyrox: ['SKI', 'RUN'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Pull', sessions: ['Deadlifts 3×5', 'Rows 3×12', '15 burpees/km finisher'], hyrox: ['SL', 'BBJ'] },
+      { day: 'Fri', label: 'Hybrid (light)', sessions: ["Farmer's Carry 3×30m", 'Wall Balls 3×15'], hyrox: ['FC', 'WB'] },
+      { day: 'Sat', label: 'Long Z2', sessions: ['5–7km easy continuous'], hyrox: ['RUN'] },
+      REST_DAY,
+    ],
+    BUILD: [
+      { day: 'Mon', label: 'Push (heavy)', sessions: ['Squats 4×6', 'Bench 4×6', 'Sled Push 4×50m'], hyrox: ['SP', 'WB'] },
+      { day: 'Tue', label: 'Engine intervals', sessions: ['6×1km @ race pace', 'SkiErg 3×1000m'], hyrox: ['SKI', 'RUN'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Pull (heavy)', sessions: ['Deadlifts 4×5', 'Rows 4×10', "Farmer's Carry 4×40m heavy"], hyrox: ['SL', 'FC'] },
+      { day: 'Fri', label: 'Hybrid (loaded)', sessions: ['Sandbag Lunges 4×50m', 'Wall Balls 4×25', '3km tempo'], hyrox: ['SBL', 'WB'] },
+      { day: 'Sat', label: 'Long Z2', sessions: ['8–10km easy continuous'], hyrox: ['RUN'] },
+      REST_DAY,
+    ],
+    RACE: [
+      { day: 'Mon', label: 'Race-pace combos', sessions: ['4×1km @ goal pace', 'Run + station combos'], hyrox: ['RUN', 'WB'] },
+      { day: 'Tue', label: 'Station time trials', sessions: ['Each station × race distance, timed'], hyrox: ['SP', 'SL', 'SKI', 'BBJ', 'FC', 'SBL', 'WB'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Half Hyrox sim', sessions: ['4km run + 4 stations'], hyrox: ['RUN', 'SP', 'SL', 'WB'] },
+      { day: 'Fri', label: 'Transition drills', sessions: ['Quick station-to-station', 'Weak-station focus'], hyrox: ['BBJ', 'SBL'] },
+      { day: 'Sat', label: 'Long + sled', sessions: ['8km Z2', 'Heavy sled push'], hyrox: ['RUN', 'SP'] },
+      REST_DAY,
+    ],
+    PEAK: [
+      { day: 'Mon', label: 'Speed sharpening', sessions: ['3×1km fast'], hyrox: ['RUN'] },
+      { day: 'Tue', label: 'Light station touch', sessions: ['50% intensity, full Hyrox flow'], hyrox: ['SKI', 'WB'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Goal-pace primer', sessions: ['2×1km @ goal pace'], hyrox: ['RUN'] },
+      { day: 'Fri', label: 'Rest', sessions: ['Full rest'], hyrox: [] },
+      { day: 'Sat', label: 'Easy + visualize', sessions: ['1–2km easy', 'Visualize race'], hyrox: ['RUN'] },
+      { day: 'Sun', label: 'Race prep / RACE', sessions: ['Final mobility', 'Race day'], hyrox: [] },
+    ],
+  },
+  hybrid: {
+    BASE: [
+      { day: 'Mon', label: 'Lower + run', sessions: ['Squats 3×8', '4km Z2'], hyrox: ['RUN'] },
+      { day: 'Tue', label: 'Hyrox intro', sessions: ['All 8 stations light familiarity'], hyrox: ['SP', 'SL', 'SKI', 'BBJ'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Upper + engine', sessions: ['Bench 3×8', 'Pull-ups 3×10', 'SkiErg 4×500m'], hyrox: ['SKI'] },
+      { day: 'Fri', label: 'Loaded carries', sessions: ["Farmer's 3×40m", 'Sandbag Lunges 3×30m'], hyrox: ['FC', 'SBL'] },
+      { day: 'Sat', label: 'Long Z2', sessions: ['6–8km easy'], hyrox: ['RUN'] },
+      REST_DAY,
+    ],
+    BUILD: [
+      { day: 'Mon', label: 'Push + race pace', sessions: ['Squats 4×6', '4×1km @ tempo'], hyrox: ['RUN'] },
+      { day: 'Tue', label: 'Station combos', sessions: ['Sled Push + Pull superset', 'Wall Balls 4×20'], hyrox: ['SP', 'SL', 'WB'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Pull + intervals', sessions: ['Deadlifts 4×5', '6×800m hard'], hyrox: ['RUN'] },
+      { day: 'Fri', label: 'Hyrox flow', sessions: ['Half Hyrox practice'], hyrox: ['SP', 'SL', 'SKI', 'BBJ', 'FC', 'SBL', 'WB'] },
+      { day: 'Sat', label: 'Long Z2', sessions: ['8–10km easy'], hyrox: ['RUN'] },
+      REST_DAY,
+    ],
+    RACE: [
+      { day: 'Mon', label: 'Race pace', sessions: ['4–5×1km @ goal pace', 'Wall Balls 4×20'], hyrox: ['RUN', 'WB'] },
+      { day: 'Tue', label: 'Station mastery', sessions: ['Time trials', 'Weak-station focus'], hyrox: ['BBJ', 'SBL', 'SP'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Half Hyrox sim', sessions: ['Full half Hyrox simulation'], hyrox: ['RUN', 'SP', 'SL', 'WB'] },
+      { day: 'Fri', label: 'Transitions', sessions: ['Quick station-to-station', 'Sharpening'], hyrox: ['SKI', 'FC'] },
+      { day: 'Sat', label: 'Long + sled', sessions: ['6–8km Z2', 'Heavy sled work'], hyrox: ['RUN', 'SP'] },
+      REST_DAY,
+    ],
+    PEAK: [
+      { day: 'Mon', label: 'Speed', sessions: ['3×1km @ goal pace'], hyrox: ['RUN'] },
+      { day: 'Tue', label: 'Station touch', sessions: ['50% intensity, full flow'], hyrox: ['WB', 'SKI'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Quick primer', sessions: ['2×1km goal pace'], hyrox: ['RUN'] },
+      { day: 'Fri', label: 'Rest', sessions: ['Full rest'], hyrox: [] },
+      { day: 'Sat', label: 'Easy + visualize', sessions: ['2km easy', 'Visualize race'], hyrox: ['RUN'] },
+      { day: 'Sun', label: 'Race prep / RACE', sessions: ['Final mobility', 'Race day'], hyrox: [] },
+    ],
+  },
+  endurance: {
+    BASE: [
+      { day: 'Mon', label: 'Strength foundation', sessions: ['Goblet Squat 3×10', 'DB Bench 3×10'], hyrox: ['WB'] },
+      { day: 'Tue', label: 'Easy aerobic', sessions: ['5km Z2'], hyrox: ['RUN'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Loaded carries', sessions: ["Farmer's 4×40m heavy", 'Sled Push 3×30m'], hyrox: ['FC', 'SP'] },
+      { day: 'Fri', label: 'Wall balls + lunges', sessions: ['Wall Balls 4×20', 'Sandbag Lunges 3×30m'], hyrox: ['WB', 'SBL'] },
+      { day: 'Sat', label: 'Long run', sessions: ['10km Z2'], hyrox: ['RUN'] },
+      REST_DAY,
+    ],
+    BUILD: [
+      { day: 'Mon', label: 'Heavy strength', sessions: ['Squat 4×5', 'Press 4×5', 'Sled Push 4×50m'], hyrox: ['SP'] },
+      { day: 'Tue', label: 'Tempo run', sessions: ['4×1km tempo'], hyrox: ['RUN'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Carries (heavy)', sessions: ['Deadlift 4×5', "Farmer's 4×50m heavy"], hyrox: ['FC'] },
+      { day: 'Fri', label: 'Hyrox stations', sessions: ['Sled Pull 4×40m', 'Wall Balls 4×25'], hyrox: ['SL', 'WB'] },
+      { day: 'Sat', label: 'Long Z2', sessions: ['10–12km easy'], hyrox: ['RUN'] },
+      REST_DAY,
+    ],
+    RACE: [
+      { day: 'Mon', label: 'Strength + speed', sessions: ['Power Cleans 4×3', '3×1km fast'], hyrox: ['RUN'] },
+      { day: 'Tue', label: 'Hyrox combos', sessions: ['Run + station blocks'], hyrox: ['RUN', 'WB', 'SP'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Half Hyrox sim', sessions: ['4km + 4 stations timed'], hyrox: ['RUN', 'SL', 'BBJ', 'FC'] },
+      { day: 'Fri', label: 'Weakness focus', sessions: ['Transitions', 'Station weakness drills'], hyrox: ['SBL', 'WB'] },
+      { day: 'Sat', label: 'Long + sled', sessions: ['8km + heavy sled'], hyrox: ['RUN', 'SP'] },
+      REST_DAY,
+    ],
+    PEAK: [
+      { day: 'Mon', label: 'Speed', sessions: ['3×1km @ goal pace'], hyrox: ['RUN'] },
+      { day: 'Tue', label: 'Light station + run', sessions: ['Easy flow practice'], hyrox: ['WB', 'SKI'] },
+      RECOVERY_DAY,
+      { day: 'Thu', label: 'Goal-pace primer', sessions: ['2×1km goal pace'], hyrox: ['RUN'] },
+      { day: 'Fri', label: 'Rest', sessions: ['Full rest'], hyrox: [] },
+      { day: 'Sat', label: 'Easy + visualize', sessions: ['2km easy', 'Visualize race'], hyrox: ['RUN'] },
+      { day: 'Sun', label: 'Race prep / RACE', sessions: ['Final mobility', 'Race day'], hyrox: [] },
+    ],
+  },
+};
+
+const WEEK_FOCUS = [
+  'Aerobic foundation', 'Volume intro', 'Station familiarity', 'Light combos', 'Aerobic threshold', 'Deload',
+  'Strength intro', 'Station power', 'Running economy', 'Full volume', 'Intensity ramp', 'Deload',
+  'Race simulation', 'Pace work', 'Heat adaptation', 'Race sim #2', 'Speed sharpening', 'Deload',
+  'Final push', 'Taper begins', 'Race week',
 ];
+
+function getCurrentPlanWeek(profile) {
+  if (!profile?.eventDate) return 1;
+  const eventDate = new Date(profile.eventDate);
+  if (isNaN(eventDate.getTime())) return 1;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const planStart = new Date(eventDate); planStart.setDate(planStart.getDate() - 21 * 7);
+  const diffDays = Math.floor((today.getTime() - planStart.getTime()) / 86400000);
+  if (diffDays < 0) return 1;
+  if (diffDays >= 21 * 7) return 21;
+  return Math.floor(diffDays / 7) + 1;
+}
+
+function getPhaseIdxForWeek(weekNum) {
+  if (weekNum <= 6) return 0;
+  if (weekNum <= 12) return 1;
+  if (weekNum <= 18) return 2;
+  return 3;
+}
+
+function getWeekTemplate(profile, weekNum) {
+  const phase = PHASES[getPhaseIdxForWeek(weekNum)];
+  const type = (profile?.athleteType && PHASE_TEMPLATES[profile.athleteType]) ? profile.athleteType : 'hybrid';
+  const tpl = PHASE_TEMPLATES[type][phase.phase];
+  const trainingDays = Array.isArray(profile?.trainingDays) && profile.trainingDays.length
+    ? profile.trainingDays
+    : null;
+  if (!trainingDays) return tpl;
+  return tpl.map(d => trainingDays.includes(d.day) ? d : { day: d.day, label: 'Rest', sessions: ['Rest day'], hyrox: [] });
+}
 
 function MyWeek({ profile }) {
   const { t } = useTheme();
@@ -1844,33 +2141,58 @@ function MyWeek({ profile }) {
   const dayMap = [6, 0, 1, 2, 3, 4, 5];
   const todayIdx = dayMap[today];
 
+  const weekNum = getCurrentPlanWeek(profile);
+  const phase = PHASES[getPhaseIdxForWeek(weekNum)];
+  const focus = WEEK_FOCUS[weekNum - 1] || WEEK_FOCUS[0];
+  const days = getWeekTemplate(profile, weekNum);
+
   return (
     <div>
       <SectionTitle accent={ACC}>Your Weekly Split</SectionTitle>
+
+      <div style={{ background: `linear-gradient(135deg, ${phase.color}18 0%, ${phase.color}05 100%)`, border: `1.5px solid ${phase.color}40`, borderRadius: 16, padding: '14px 18px', marginBottom: 12, boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: phase.grad }} />
+        <div style={{ paddingLeft: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: phase.color, letterSpacing: 1 }}>WEEK {weekNum} OF 21</span>
+            <span style={{ fontSize: 11, color: t.textSec }}>·</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: t.textSec, textTransform: 'uppercase', letterSpacing: 1 }}>{phase.label}</span>
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{focus}</div>
+        </div>
+      </div>
+
       {profile.athleteType && (
-        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, padding: '14px 18px', marginBottom: 18, fontSize: 14, color: t.textMute, lineHeight: 1.5, boxShadow: t.cardShadow }}>
-          {profile.athleteType === 'strength' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Dumbbell} size={13} /> As a strength athlete, prioritize extending running volume.</span>}
-          {profile.athleteType === 'hybrid' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Zap} size={13} /> Hybrid profile — well-matched. Focus on sharpening transitions.</span>}
-          {profile.athleteType === 'endurance' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Activity} size={13} /> As an endurance athlete, add more loaded carries and sled work.</span>}
+        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, padding: '14px 18px', marginBottom: 12, fontSize: 14, color: t.textMute, lineHeight: 1.5, boxShadow: t.cardShadow }}>
+          {profile.athleteType === 'strength' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Dumbbell} size={13} /> As a strength athlete, your week emphasizes running volume and aerobic capacity.</span>}
+          {profile.athleteType === 'hybrid' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Zap} size={13} /> Hybrid profile — balanced strength + engine across the week.</span>}
+          {profile.athleteType === 'endurance' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Activity} size={13} /> As an endurance athlete, your week emphasizes loaded carries and sled work.</span>}
         </div>
       )}
+      {profile.currentRoutine && (
+        <details style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 16, padding: '12px 18px', marginBottom: 18, boxShadow: t.cardShadow }}>
+          <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: t.text, letterSpacing: 0.3 }}>Your existing routine</summary>
+          <div style={{ fontSize: 13, color: t.textMute, lineHeight: 1.6, marginTop: 10, whiteSpace: 'pre-wrap' }}>{profile.currentRoutine}</div>
+        </details>
+      )}
       <div style={{ display: 'grid', gap: 12 }}>
-        {WEEKLY.map((d, i) => {
+        {days.map((d, i) => {
           const isToday = i === todayIdx;
+          const ds = DAY_STYLE[d.day] || DAY_STYLE.Mon;
           return (
             <div key={d.day} style={{
-              background: isToday ? `linear-gradient(135deg, ${d.color}10 0%, ${d.color}05 100%)` : t.card,
-              border: `1.5px solid ${isToday ? d.color : t.border}`,
-              borderRadius: 16, padding: '14px 18px', boxShadow: isToday ? `0 8px 24px ${d.color}20` : t.cardShadow,
+              background: isToday ? `linear-gradient(135deg, ${ds.color}10 0%, ${ds.color}05 100%)` : t.card,
+              border: `1.5px solid ${isToday ? ds.color : t.border}`,
+              borderRadius: 16, padding: '14px 18px', boxShadow: isToday ? `0 8px 24px ${ds.color}20` : t.cardShadow,
               position: 'relative', overflow: 'hidden',
             }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: d.grad }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: ds.grad }} />
               <div style={{ paddingLeft: 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: d.sessions.length ? 10 : 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: d.color, minWidth: 36 }}>{d.day}</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: ds.color, minWidth: 36 }}>{d.day}</span>
                     <span style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{d.label}</span>
-                    {isToday && <span style={{ background: d.grad, color: '#fff', fontSize: 10, padding: '4px 10px', borderRadius: 999, fontWeight: 800, letterSpacing: 0.5, boxShadow: `0 2px 8px ${d.color}40` }}>TODAY</span>}
+                    {isToday && <span style={{ background: ds.grad, color: '#fff', fontSize: 10, padding: '4px 10px', borderRadius: 999, fontWeight: 800, letterSpacing: 0.5, boxShadow: `0 2px 8px ${ds.color}40` }}>TODAY</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {d.hyrox.map(h => {
@@ -1879,11 +2201,18 @@ function MyWeek({ profile }) {
                     })}
                   </div>
                 </div>
-                {d.sessions.map((s, j) => (
-                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: t.textMute, marginBottom: 4 }}>
-                    <span style={{ color: d.color, flexShrink: 0, fontWeight: 700 }}>›</span><span>{s}</span>
-                  </div>
-                ))}
+                {d.sessions.map((s, j) => {
+                  const sub = applyEquipment(s, profile.equipment);
+                  return (
+                    <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: t.textMute, marginBottom: 4 }}>
+                      <span style={{ color: ds.color, flexShrink: 0, fontWeight: 700 }}>›</span>
+                      <span>
+                        {sub.text}
+                        {sub.swapped && <span style={{ fontSize: 11, color: t.textSec, marginLeft: 6, fontStyle: 'italic' }}>(swap from {sub.originals.join(', ')})</span>}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -1893,29 +2222,6 @@ function MyWeek({ profile }) {
   );
 }
 
-const PLAN_WEEKS = [
-  ['Aerobic foundation', ['2×1km easy', 'SkiErg 3×500m', 'Rowing 3×500m']],
-  ['Volume intro', ['3×1km runs', 'SkiErg 2×1000m', 'Farmers Carry × 3 sets']],
-  ['Station familiarity', ['4×1km runs', 'Burpee BJs 3×20m', 'Wall Balls 3×20']],
-  ['Light combos', ['Run + SkiErg combo', 'Empty sled 3×50m', 'Sandbag Lunges 3×30m']],
-  ['Aerobic threshold', ['5km tempo', 'All stations light', 'Active recovery']],
-  ['Deload', ['Easy 3km run', 'Light stations 50%', 'Mobility']],
-  ['Strength intro', ['Sled Push loaded 4×50m', 'Farmers Carry heavy', '4×1km @ race pace']],
-  ['Station power', ['Sled Push + Pull superset', 'Sandbag Lunges 4×50m', 'Wall Balls 4×25']],
-  ['Running economy', ['6×1km intervals', 'SkiErg 3×1000m', 'Rowing 3×1000m']],
-  ['Full volume', ['Half Hyrox: 4km + 4 stations', 'Heavy sled', 'Burpees 3×40m']],
-  ['Intensity ramp', ['8×1km race pace', 'All 8 stations time trials', 'Strength']],
-  ['Deload', ['Easy 5km', 'Light stations 50%', 'Rest']],
-  ['Race simulation', ['Full Hyrox', 'Transition practice', 'Weakness focus']],
-  ['Pace work', ['5×1km race pace', 'Station combos', 'SkiErg + Row']],
-  ['Heat adaptation', ['Outdoor heat runs', 'Full station run-through', 'Recovery']],
-  ['Race sim #2', ['Full Hyrox timed', 'Weak station focus', 'Race nutrition']],
-  ['Speed sharpening', ['3×1km fast', 'Quick transitions', 'Strength maintenance']],
-  ['Deload', ['Easy 4km', 'Light stations 40%', 'Recovery']],
-  ['Final push', ['3×1km goal pace', 'Station race intensity', 'Rest']],
-  ['Taper begins', ['2×1km easy', 'Light station touch', 'Visualize']],
-  ['Race week', ['2×easy 1km', 'Rest Wed-Fri', 'RACE DAY']],
-];
 const PHASES = [
   { phase: 'BASE', color: '#059669', grad: GRAD.green, label: 'Base Building' },
   { phase: 'BUILD', color: '#D97706', grad: GRAD.amber, label: 'Strength & Volume' },
@@ -1933,9 +2239,14 @@ function TrainingPlan({ profile }) {
   for (let i = 0; i < 21; i++) {
     const start = new Date(planStart); start.setDate(start.getDate() + i * 7);
     const end = new Date(start); end.setDate(end.getDate() + 6);
-    const phaseIdx = i < 6 ? 0 : i < 12 ? 1 : i < 18 ? 2 : 3;
-    const [focus, sessions] = PLAN_WEEKS[i] || ['Training', []];
-    weeks.push({ n: i + 1, start, end, phase: PHASES[phaseIdx], focus, sessions, isCurrent: today >= start && today <= end, isPast: end < today });
+    const weekNum = i + 1;
+    const phaseIdx = getPhaseIdxForWeek(weekNum);
+    const focus = WEEK_FOCUS[i] || 'Training';
+    const tpl = getWeekTemplate(profile, weekNum);
+    const sessions = [tpl[0], tpl[3], tpl[5]]
+      .filter(d => d && d.sessions.length)
+      .map(d => `${d.day} · ${d.label}: ${applyEquipment(d.sessions[0], profile.equipment).text}`);
+    weeks.push({ n: weekNum, start, end, phase: PHASES[phaseIdx], focus, sessions, isCurrent: today >= start && today <= end, isPast: end < today });
   }
 
   return (
