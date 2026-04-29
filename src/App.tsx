@@ -721,6 +721,69 @@ function generatePlan(profile: any, today: Date = new Date()) {
   return { weeks, totalWeeks, eventDate, usingDefault, equipment, level };
 }
 
+// Parse a prescription line like "Goblet squat 3×8 (light)" or "Run 4×1km @ race pace, 90s rest"
+// into structured fields for prefilling the log form.
+function parseExercisePrescription(text: string) {
+  let s = text.trim();
+  let weight: number | null = null;
+  const wMatch = s.match(/\((\d+(?:\.\d+)?)\s*kg\)|(\d+(?:\.\d+)?)\s*kg\b/i);
+  if (wMatch) {
+    weight = parseFloat(wMatch[1] || wMatch[2]);
+    s = s.replace(wMatch[0], '').trim();
+  }
+  let sets: number | null = null;
+  let reps: number | null = null;
+  let unit: string | null = null;
+  const srMatch = s.match(/(\d+)\s*[×x]\s*(\d+(?:\.\d+)?)\s*(s|m|km)?\b/i);
+  if (srMatch) {
+    sets = parseInt(srMatch[1]);
+    reps = parseFloat(srMatch[2]);
+    unit = srMatch[3]?.toLowerCase() || null;
+    s = s.replace(srMatch[0], '').trim();
+  }
+  let distance: number | null = null;
+  let distUnit: string | null = null;
+  if (!srMatch) {
+    const dMatch = s.match(/(\d+(?:\.\d+)?)\s*(km|m)\b/i);
+    if (dMatch) {
+      distance = parseFloat(dMatch[1]);
+      distUnit = dMatch[2].toLowerCase();
+      s = s.replace(dMatch[0], '').trim();
+    }
+  }
+  const name = s.replace(/^[\s,()@]+|[\s,()@]+$/g, '').replace(/\s+/g, ' ').trim();
+  return { name, sets, reps, weight, distance, distUnit, unit, raw: text };
+}
+
+// Map a prescription to the closest EQUIV entry by keyword. Returns null if no match.
+function findEquivMatch(prescription: { name: string; raw: string }) {
+  const lower = (prescription.name + ' ' + prescription.raw).toLowerCase();
+  if (lower.includes('thruster')) return EQUIV.find(e => e.id === 'thrusters');
+  if (lower.includes('long run') || (lower.includes('run') && lower.includes('z2'))) return EQUIV.find(e => e.id === 'longrun');
+  if ((lower.includes('1km') || lower.includes('intervals')) && (lower.includes('×') || lower.includes('x ') || lower.includes('race pace'))) return EQUIV.find(e => e.id === 'intervals');
+  if (lower.includes("farmer")) return EQUIV.find(e => e.id === 'farmers');
+  if (lower.includes('lunge')) return EQUIV.find(e => e.id === 'lunges');
+  if (lower.includes('burpee')) return EQUIV.find(e => e.id === 'burpees');
+  if (lower.includes('row') && !lower.includes('rowing')) return EQUIV.find(e => e.id === 'rows');
+  if (lower.includes('bench')) return EQUIV.find(e => e.id === 'bench');
+  if (lower.includes('deadlift')) return EQUIV.find(e => e.id === 'deadlifts');
+  if (lower.includes('squat')) return EQUIV.find(e => e.id === 'squats');
+  if (lower.includes('cycl') || lower.includes('bike')) return EQUIV.find(e => e.id === 'cycle');
+  return null;
+}
+
+function getTodayPrescription(profile: any) {
+  if (!profile) return null;
+  try {
+    const week = getCurrentWeekPlan(profile, new Date());
+    if (!week) return null;
+    const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+    const dayPlan = (week.days || []).find((d: any) => d.day === todayName);
+    if (!dayPlan || !dayPlan.sessions?.length) return null;
+    return { day: dayPlan.day, sessions: dayPlan.sessions, weekN: week.n, phaseLabel: week.phase?.label };
+  } catch { return null; }
+}
+
 function getCurrentWeekPlan(profile: any, today: Date = new Date()) {
   const plan = generatePlan(profile, today);
   if (!plan.weeks.length) return null;
@@ -1711,16 +1774,31 @@ function PasteParser({ onImport, lbl, inp }) {
   );
 }
 
-function TranslateMode({ translated, setTranslated, inp, lbl }) {
+function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
   const { t } = useTheme();
   const [picker, setPicker] = useState('');
-  const [vals, setVals] = useState({});
+  const [vals, setVals] = useState<any>({});
   const ex = EQUIV.find(e => e.id === picker);
+  const today = profile ? getTodayPrescription(profile) : null;
 
-  const handlePick = (id) => {
+  const handlePick = (id, overrides: any = {}) => {
     setPicker(id);
     const e = EQUIV.find(x => x.id === id);
-    if (e) { const defaults = {}; e.fields.forEach(f => { defaults[f.k] = f.d; }); setVals(defaults); }
+    if (e) { const defaults: any = {}; e.fields.forEach(f => { defaults[f.k] = f.d; }); setVals({ ...defaults, ...overrides }); }
+  };
+
+  const handlePrescriptionPick = (text: string) => {
+    const p = parseExercisePrescription(text);
+    const equiv = findEquivMatch(p);
+    if (!equiv) { setPicker(''); setVals({}); return null; }
+    const overrides: any = {};
+    if (p.sets != null && equiv.fields.some(f => f.k === 'sets')) overrides.sets = p.sets;
+    if (p.reps != null && equiv.fields.some(f => f.k === 'reps')) overrides.reps = p.reps;
+    if (p.weight != null && equiv.fields.some(f => f.k === 'weight')) overrides.weight = p.weight;
+    if (p.distance != null && equiv.fields.some(f => f.k === 'distance')) overrides.distance = p.distance;
+    handlePick(equiv.id, overrides);
+    if (typeof window !== 'undefined') window.scrollTo({ top: window.scrollY + 200, behavior: 'smooth' });
+    return equiv;
   };
 
   const preview = ex ? ex.calc(Object.fromEntries(Object.entries(vals).map(([k, v]) => {
@@ -1745,7 +1823,53 @@ function TranslateMode({ translated, setTranslated, inp, lbl }) {
     <div>
       <PasteParser onImport={(items) => setTranslated([...translated, ...items])} lbl={lbl} inp={inp} />
 
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>Or Pick Manually</div>
+      {today && (() => {
+        const items = today.sessions.map((s: string) => {
+          const p = parseExercisePrescription(s);
+          const m = findEquivMatch(p);
+          return { raw: s, parsed: p, match: m };
+        });
+        return (
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: ACC, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon C={Calendar} size={12} color={ACC} /> Today's Plan · {today.day}
+              </div>
+              <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>Week {today.weekN} · {today.phaseLabel}</div>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {items.map((it: any, i: number) => {
+                const station = it.match ? getStationMeta(it.match.station) : null;
+                const stationGrad = it.match ? (it.match.station === 'run' ? GRAD.orange : STATION_META[it.match.station]?.grad) : null;
+                const isActive = it.match && picker === it.match.id;
+                return (
+                  <button key={i} onClick={() => handlePrescriptionPick(it.raw)} disabled={!it.match} style={{
+                    width: '100%', textAlign: 'left' as const, padding: '12px 14px', cursor: it.match ? 'pointer' : 'not-allowed',
+                    background: isActive ? `${ACC}15` : t.card,
+                    border: `1.5px solid ${isActive ? ACC : t.border}`,
+                    borderRadius: 12, fontFamily: FONT,
+                    opacity: it.match ? 1 : 0.7,
+                    position: 'relative', overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                  }}>
+                    {stationGrad && <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: stationGrad }} />}
+                    <div style={{ paddingLeft: stationGrad ? 4 : 0, minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>{it.raw}</div>
+                      <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>
+                        {it.match ? <>Tap to log → fills as <span style={{ color: ACC, fontWeight: 700 }}>{it.match.name}</span> ({station?.abbr})</> : 'No Hyrox equivalent — won\'t count toward race coverage'}
+                      </div>
+                    </div>
+                    {it.match && <Pill grad={stationGrad} size="sm">{station?.abbr}</Pill>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: t.textSec, marginTop: 10, fontStyle: 'italic', paddingLeft: 4 }}>Tap a prescription, then edit the sets/reps/weight to what you actually did.</div>
+          </div>
+        );
+      })()}
+
+      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>{today ? 'Or Pick Other' : 'Or Pick Manually'}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: 10, marginBottom: 18 }}>
         {EQUIV.map(e => {
           const st = getStationMeta(e.station);
@@ -2393,7 +2517,7 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
       <div style={{ marginBottom: 16 }}><label style={lbl}>DATE</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
 
       {mode === 'translate'
-        ? <TranslateMode translated={translated} setTranslated={setTranslated} inp={inp} lbl={lbl} />
+        ? <TranslateMode translated={translated} setTranslated={setTranslated} inp={inp} lbl={lbl} profile={profile} />
         : <DirectMode stationData={stationData} setStation={setStation} runCount={runCount} setRunCount={setRunCount} runPace={runPace} setRunPace={setRunPace} inp={inp} lbl={lbl} />}
 
       {hasAny && (
