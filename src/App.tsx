@@ -681,9 +681,14 @@ function generatePlan(profile: any, today: Date = new Date()) {
   const equipment = profile.equipment || 'gym';
   const level = profile.level || 'intermediate';
   const useExisting = profile.routineMode === 'existing' && profile.routine?.parsed?.days?.length;
-  const baseDays = useExisting
+  const rawDays = useExisting
     ? profile.routine.parsed.days
     : (DEFAULT_DAY_SPLITS[level]?.[equipment] || DEFAULT_DAY_SPLITS.intermediate.gym);
+  // Equipment-adapt the day sessions. Default splits are already equipment-keyed
+  // so this is mainly for user-pasted routines on home/minimal tiers.
+  const baseDays = useExisting
+    ? rawDays.map((d: any) => ({ ...d, sessions: adaptExtrasForEquipment(d.sessions, equipment) }))
+    : rawDays;
   const usingDefault = !useExisting;
 
   const weeks: any[] = [];
