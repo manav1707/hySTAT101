@@ -18,6 +18,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Only intervene on navigation requests so dev/HMR JS isn't touched.
   if (event.request.mode !== 'navigate') return;
   event.respondWith(
     fetch(event.request).catch(() => caches.match('/'))
