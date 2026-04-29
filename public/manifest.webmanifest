@@ -1,0 +1,16 @@
+{
+  "name": "Hyrox Tracker",
+  "short_name": "Hyrox",
+  "description": "Personal Hyrox training tracker — log workouts, project finish times, and find your weakest station.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E0E0E",
+  "theme_color": "#84CC16",
+  "categories": ["fitness", "health", "sports"],
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

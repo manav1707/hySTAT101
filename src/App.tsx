@@ -126,6 +126,9 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
     }
+    /* Hide scrollbar on the tab bar while keeping it scrollable on narrow widths */
+    .hyrox-tabs::-webkit-scrollbar { display: none; height: 0; width: 0; }
+    .hyrox-tabs { scrollbar-width: none; -ms-overflow-style: none; }
   `;
   document.head.appendChild(style);
 }
@@ -261,6 +264,247 @@ function cumulativeScore(workouts, pbs) {
     total += sc?.score || 0;
   });
   return Math.round(total * 10) / 10;
+}
+
+// === Strava / GPX / TCX import ===
+
+function haversine(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+function guessSport(name: string, typeRaw: string) {
+  const blob = (name + ' ' + typeRaw).toLowerCase();
+  if (blob.includes('row')) return 'Row';
+  if (blob.includes('ski') || blob.includes('erg')) return 'Ski';
+  if (blob.includes('ride') || blob.includes('bike') || blob.includes('cycl')) return 'Ride';
+  if (blob.includes('walk') || blob.includes('hike')) return 'Walk';
+  if (blob.includes('run') || blob.includes('jog') || typeRaw === '9') return 'Run';
+  return 'Run';
+}
+
+function parseGPX(xml: string) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('Invalid GPX (parse error)');
+  const trk = doc.querySelector('trk');
+  if (!trk) throw new Error('No <trk> element in GPX');
+  const name = trk.querySelector('name')?.textContent?.trim() || 'Strava activity';
+  const typeRaw = trk.querySelector('type')?.textContent?.trim() || '';
+  const sport = guessSport(name, typeRaw);
+
+  const trkpts = Array.from(trk.querySelectorAll('trkpt'));
+  if (trkpts.length < 2) throw new Error('Not enough track points to compute distance');
+
+  let distM = 0;
+  let prev: { lat: number; lon: number } | null = null;
+  for (const p of trkpts) {
+    const lat = parseFloat(p.getAttribute('lat') || 'NaN');
+    const lon = parseFloat(p.getAttribute('lon') || 'NaN');
+    if (isNaN(lat) || isNaN(lon)) continue;
+    if (prev) distM += haversine(prev, { lat, lon });
+    prev = { lat, lon };
+  }
+
+  const firstTime = trkpts[0].querySelector('time')?.textContent;
+  const lastTime = trkpts[trkpts.length - 1].querySelector('time')?.textContent;
+  if (!firstTime || !lastTime) throw new Error('Missing timestamps');
+  const elapsedS = (new Date(lastTime).getTime() - new Date(firstTime).getTime()) / 1000;
+
+  return {
+    sport, name,
+    dateISO: firstTime.slice(0, 10),
+    distM: Math.round(distM),
+    movingTimeS: Math.max(1, Math.round(elapsedS)),
+  };
+}
+
+function parseTCX(xml: string) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('Invalid TCX (parse error)');
+  const activity = doc.querySelector('Activity');
+  if (!activity) throw new Error('No <Activity> element in TCX');
+  const sportAttr = activity.getAttribute('Sport') || '';
+  const sport = guessSport('', sportAttr);
+
+  const laps = Array.from(activity.querySelectorAll('Lap'));
+  if (!laps.length) throw new Error('No laps found in TCX');
+  let distM = 0, movingTimeS = 0;
+  for (const lap of laps) {
+    distM += parseFloat(lap.querySelector('DistanceMeters')?.textContent || '0');
+    movingTimeS += parseFloat(lap.querySelector('TotalTimeSeconds')?.textContent || '0');
+  }
+  const startTime = laps[0]?.getAttribute('StartTime') || activity.querySelector('Id')?.textContent || '';
+
+  return {
+    sport, name: 'Strava activity',
+    dateISO: startTime.slice(0, 10),
+    distM: Math.round(distM),
+    movingTimeS: Math.max(1, Math.round(movingTimeS)),
+  };
+}
+
+function parseActivityFile(text: string, filename: string) {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.tcx') || text.includes('TrainingCenterDatabase')) return parseTCX(text);
+  if (lower.endsWith('.gpx') || text.includes('<gpx')) return parseGPX(text);
+  throw new Error('Unsupported file. Use a Strava GPX or TCX export.');
+}
+
+// === Race Day projection + Weakest Station ===
+
+function getBestRunPace(workouts: any[]) {
+  let best: number | null = null;
+  workouts.forEach(w => {
+    if (w.runs?.pace && w.runs.pace > 0) {
+      if (best === null || w.runs.pace < best) best = w.runs.pace;
+    }
+  });
+  return best;
+}
+
+const PACING_STRATEGIES = [
+  { id: 'pb', label: 'At PB', sub: 'Match every PB exactly' },
+  { id: 'goal', label: 'Stretch', sub: '~5% under PB across the board' },
+  { id: 'negative', label: 'Negative', sub: 'Hold back early, push the back half' },
+  { id: 'safe', label: 'Safe', sub: '+10% buffer — finish strong, no blowup' },
+];
+
+function applyStrategy(base: number, strategy: string, idx: number, isRun: boolean) {
+  let mult = 1;
+  if (strategy === 'goal') mult = isRun ? 0.97 : 0.95;
+  else if (strategy === 'safe') mult = isRun ? 1.05 : 1.10;
+  else if (strategy === 'negative') mult = idx < 4 ? 1.05 : 0.95;
+  return Math.round(base * mult);
+}
+
+function projectRace(workouts: any[], pbs: any, strategy: string) {
+  const pace = getBestRunPace(workouts);
+  const runFallback = 360;
+  const stations = STATIONS.map((s, i) => {
+    const range = STATION_TIME_RANGES[s.id] || [300, 200];
+    const pb = pbs[s.id];
+    const base = pb?.time ?? range[0];
+    return { ...s, time: applyStrategy(base, strategy, i, false), isFallback: !pb, pbTime: pb?.time ?? null };
+  });
+  const runs = Array.from({ length: 8 }, (_, i) => ({
+    idx: i + 1,
+    time: applyStrategy(pace ?? runFallback, strategy, i, true),
+    isFallback: pace === null,
+  }));
+  const stationsTotal = stations.reduce((a, x) => a + x.time, 0);
+  const runsTotal = runs.reduce((a, x) => a + x.time, 0);
+  const total = stationsTotal + runsTotal;
+  return { stations, runs, total, stationsTotal, runsTotal, hasPace: pace !== null, pace };
+}
+
+function rankStationsByWeakness(pbs: any) {
+  return STATIONS.map(s => {
+    const pb = pbs[s.id];
+    const range = STATION_TIME_RANGES[s.id] || [360, 240];
+    const [slow, fast] = range;
+    if (!pb) return { station: s, pb: null, fast, slow, norm: 1.2, hasData: false };
+    const norm = Math.max(0, Math.min(1, (pb.time - fast) / (slow - fast)));
+    return { station: s, pb, fast, slow, norm, hasData: true };
+  }).sort((a, b) => b.norm - a.norm);
+}
+
+function getDrillsForStation(stationId: string) {
+  return EQUIV.filter(e => e.station === stationId);
+}
+
+function fmtHMS(s: number | null | undefined) {
+  if (s == null || isNaN(s)) return '—';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.round(s % 60);
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    : `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+// === Smart Taper logic ===
+
+function computeTaperStatus(workouts: any[], profile: any) {
+  const eventDate = new Date(profile.eventDate);
+  const today = new Date();
+  const daysToEvent = Math.max(0, Math.floor((eventDate.getTime() - today.getTime()) / 86400000));
+  const dayMs = 86400000;
+  const since = (n: number) => workouts.filter(w => (today.getTime() - new Date(w.date).getTime()) / dayMs <= n).length;
+  const days7 = since(7), days14 = since(14), days21 = since(21);
+  const avgPerWeek = days21 / 3;
+
+  let phase = 'BASE', phaseLabel = 'Base building', volumeMultiplier = 1.0, intensity = 'moderate', advice = '';
+  let urgency: 'normal' | 'warn' | 'critical' = 'normal';
+
+  if (daysToEvent <= 0) {
+    phase = 'RACE'; phaseLabel = 'Race day or past'; volumeMultiplier = 0;
+    advice = 'Recover. Note PBs and reflect.'; intensity = 'rest'; urgency = 'critical';
+  } else if (daysToEvent <= 3) {
+    phase = 'RACE-WEEK'; phaseLabel = 'Final 72 hours'; volumeMultiplier = 0.25;
+    advice = 'Rest, mobility, sleep. One easy 1km shake-out only. Trust the work.'; intensity = 'minimal'; urgency = 'critical';
+  } else if (daysToEvent <= 7) {
+    phase = 'RACE-WEEK'; phaseLabel = 'Race week'; volumeMultiplier = 0.4;
+    advice = 'Light shake-outs. No new stations, no PRs. Sleep & nutrition first.'; intensity = 'minimal'; urgency = 'critical';
+  } else if (daysToEvent <= 14) {
+    phase = 'TAPER'; phaseLabel = 'Taper begun'; volumeMultiplier = 0.65;
+    advice = 'Cut volume ~35%. Keep race-pace touch, drop heavy strength.'; intensity = 'sharp'; urgency = 'warn';
+  } else if (daysToEvent <= 28) {
+    phase = 'PEAK'; phaseLabel = 'Peak block'; volumeMultiplier = 1.0;
+    advice = 'Hold race-pace work. Time-trial weak stations once. Maintain volume.'; intensity = 'race-pace'; urgency = 'normal';
+  } else if (daysToEvent <= 56) {
+    phase = 'BUILD'; phaseLabel = 'Hyrox-specific build'; volumeMultiplier = 1.1;
+    advice = 'Combine stations with runs. Increase loaded carries. Push intensity.'; intensity = 'high'; urgency = 'normal';
+  } else {
+    phase = 'BASE'; phaseLabel = 'Base building'; volumeMultiplier = 1.0;
+    advice = 'Aerobic foundation + station familiarity. Volume over intensity.'; intensity = 'moderate'; urgency = 'normal';
+  }
+
+  let volumeFlag: { type: 'high' | 'low' | 'taper-warn'; text: string } | null = null;
+  if (daysToEvent > 14 && avgPerWeek > 5.5) {
+    volumeFlag = { type: 'high', text: `Volume high (${avgPerWeek.toFixed(1)}/wk avg). Schedule a deload week.` };
+  } else if (daysToEvent > 14 && days21 > 0 && avgPerWeek < 1.5) {
+    volumeFlag = { type: 'low', text: `Volume low (${avgPerWeek.toFixed(1)}/wk avg). Add 1 easy session.` };
+  } else if (daysToEvent > 14 && days7 === 0 && days21 > 0) {
+    volumeFlag = { type: 'low', text: 'No sessions this week — get one in tomorrow.' };
+  } else if (daysToEvent <= 14 && daysToEvent > 7 && days7 > 4) {
+    volumeFlag = { type: 'taper-warn', text: `${days7} sessions in last 7d — too much for taper. Cut back.` };
+  } else if (daysToEvent <= 7 && days7 > 2) {
+    volumeFlag = { type: 'taper-warn', text: `${days7} sessions in race week — drop to 1-2 max.` };
+  }
+
+  return { phase, phaseLabel, volumeMultiplier, intensity, advice, urgency, daysToEvent, days7, days14, days21, avgPerWeek, volumeFlag };
+}
+
+function activityToWorkout(act: any) {
+  const distKm = act.distM / 1000;
+  const paceSecPerKm = act.movingTimeS / Math.max(0.01, distKm);
+  const stations: any = {};
+  let runs: any = null;
+
+  if (act.sport === 'Row' && act.distM >= 800 && act.distM <= 1200) {
+    stations.rowing = { time: act.movingTimeS, weight: null };
+  } else if (act.sport === 'Ski' && act.distM >= 800 && act.distM <= 1200) {
+    stations.skierg = { time: act.movingTimeS, weight: null };
+  } else {
+    runs = { count: Math.max(1, Math.round(distKm)), pace: Math.round(paceSecPerKm) };
+  }
+
+  return {
+    id: Date.now(),
+    date: act.dateISO,
+    sessionType: 'direct',
+    stations,
+    runs,
+    translated: [],
+    notes: `Imported from Strava: ${act.name}`,
+    voiceMemo: null,
+    isTest: false,
+  };
 }
 
 function fmtTime(s) {
@@ -1706,6 +1950,119 @@ Write a short note that acknowledges ONE specific thing from today and suggests 
   );
 }
 
+function StravaImport({ onImport }: any) {
+  const { t } = useTheme();
+  const [parsed, setParsed] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onFile = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError(null); setBusy(true);
+    try {
+      const text = await file.text();
+      const act = parseActivityFile(text, file.name);
+      setParsed({ ...act, fileName: file.name });
+    } catch (err: any) {
+      setError(err?.message || 'Failed to parse file');
+      setParsed(null);
+    } finally {
+      setBusy(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const confirm = () => {
+    if (!parsed) return;
+    onImport(activityToWorkout(parsed));
+    setParsed(null);
+    setOpen(false);
+  };
+
+  const sportIcon = parsed?.sport === 'Row' ? Wind : parsed?.sport === 'Ride' ? Activity : parsed?.sport === 'Ski' ? Snowflake : Footprints;
+  const distKm = parsed ? parsed.distM / 1000 : 0;
+  const pace = parsed && parsed.distM > 0 ? parsed.movingTimeS / (parsed.distM / 1000) : 0;
+  const mappingNote = parsed && (
+    parsed.sport === 'Row' && parsed.distM >= 800 && parsed.distM <= 1200 ? `Will log as Hyrox Rowing (1000m) station: ${fmtTime(parsed.movingTimeS)}` :
+    parsed.sport === 'Ski' && parsed.distM >= 800 && parsed.distM <= 1200 ? `Will log as SkiErg (1000m) station: ${fmtTime(parsed.movingTimeS)}` :
+    `Will log as ${Math.max(1, Math.round(distKm))} × 1km run @ ${fmtTime(Math.round(pace))}/km`
+  );
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {!open && !parsed && (
+        <button onClick={() => { setOpen(true); setTimeout(() => fileRef.current?.click(), 0); }} style={{
+          width: '100%', padding: '14px 16px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          background: t.card, color: t.text, border: `1.5px dashed ${ACC}60`,
+          borderRadius: 12, fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+        }}>
+          <Icon C={Clipboard} size={15} color={ACC} />
+          Import from Strava (GPX / TCX)
+        </button>
+      )}
+
+      <input ref={fileRef} type="file" accept=".gpx,.tcx,application/gpx+xml,application/vnd.garmin.tcx+xml,text/xml" onChange={onFile} style={{ display: 'none' }} />
+
+      {busy && (
+        <div style={{ padding: '14px 16px', background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, fontSize: 13, color: t.textSec, textAlign: 'center' }}>
+          Parsing…
+        </div>
+      )}
+
+      {error && (
+        <div style={{ background: '#7f1d1d', border: '1px solid #EF4444', borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icon C={AlertTriangle} size={14} color="#fff" />
+          <div style={{ fontSize: 13, color: '#fff', flex: 1 }}>{error}</div>
+          <button onClick={() => { setError(null); setOpen(false); }} style={{ background: 'transparent', color: '#fff', border: 'none', fontSize: 16, cursor: 'pointer', padding: 4 }}>×</button>
+        </div>
+      )}
+
+      {parsed && !error && (
+        <div style={{ background: t.card, border: `1.5px solid ${ACC}`, borderRadius: 14, padding: '16px 18px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: ACC }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Icon C={sportIcon} size={18} color={ACC} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{parsed.name}</div>
+              <div style={{ fontSize: 11, color: t.textSec, marginTop: 2 }}>{parsed.dateISO} · {parsed.sport} · {parsed.fileName}</div>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>Distance</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{distKm.toFixed(2)}<span style={{ fontSize: 11, color: t.textSec, fontWeight: 500, marginLeft: 3 }}>km</span></div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>Time</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(parsed.movingTimeS)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase' }}>Pace</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: ACC, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtTime(Math.round(pace))}<span style={{ fontSize: 11, color: t.textSec, fontWeight: 500, marginLeft: 3 }}>/km</span></div>
+            </div>
+          </div>
+          <div style={{ background: t.surfaceAlt, borderRadius: 10, padding: '10px 12px', borderLeft: `3px solid ${ACC}`, marginBottom: 12, fontSize: 12, color: t.text, lineHeight: 1.4 }}>
+            {mappingNote}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setParsed(null); setOpen(false); }} style={{
+              flex: 1, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              background: 'transparent', color: t.textSec, border: `1px solid ${t.border}`, borderRadius: 10, fontFamily: FONT,
+            }}>Cancel</button>
+            <button onClick={confirm} style={{
+              flex: 2, padding: '11px', fontSize: 13, fontWeight: 800, cursor: 'pointer',
+              background: ACC, color: '#000', border: 'none', borderRadius: 10, fontFamily: FONT, letterSpacing: 0.3,
+            }}>IMPORT WORKOUT</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
   const { t } = useTheme();
   const today = new Date().toISOString().split('T')[0];
@@ -1753,8 +2110,20 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
     } catch (e) { console.error('Save failed:', e); }
   };
 
+  const handleStravaImport = async (workout: any) => {
+    const newWorkouts = [...workouts, workout];
+    try {
+      await saveWorkouts(newWorkouts);
+      setSaved(true);
+      setInsightFor({ workout, allWorkouts: newWorkouts });
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) { console.error('Import failed:', e); }
+  };
+
   return (
     <div>
+      <StravaImport onImport={handleStravaImport} />
+
       <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: t.surfaceAlt, padding: 4, borderRadius: 12 }}>
         <button onClick={() => setMode('translate')} style={{
           flex: 1, padding: '13px', fontSize: 14, fontWeight: 700, borderRadius: 9, cursor: 'pointer', border: 'none', fontFamily: FONT,
@@ -1895,7 +2264,7 @@ function Progress({ workouts, pbs }) {
                               <stop offset="95%" stopColor={s.color} stopOpacity={0} />
                             </linearGradient>
                           </defs>
-                          <YAxis hide domain={['auto', 'auto']} reversed />
+                          <YAxis hide domain={['auto', 'auto']} />
                           <Tooltip
                             cursor={{ stroke: s.color, strokeWidth: 1, strokeDasharray: '3 3' }}
                             content={({ active, payload, label }: any) => !active || !payload?.length ? null : (
@@ -2229,7 +2598,7 @@ const PHASES = [
   { phase: 'PEAK', color: ACC, grad: GRAD.orange, label: 'Peak & Taper' },
 ];
 
-function TrainingPlan({ profile }) {
+function TrainingPlan({ profile, workouts = [] }: any) {
   const { t } = useTheme();
   const eventDate = new Date(profile.eventDate);
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -2249,8 +2618,65 @@ function TrainingPlan({ profile }) {
     weeks.push({ n: weekNum, start, end, phase: PHASES[phaseIdx], focus, sessions, isCurrent: today >= start && today <= end, isPast: end < today });
   }
 
+  const taper = computeTaperStatus(workouts, profile);
+  const urgencyColor = taper.urgency === 'critical' ? '#EF4444' : taper.urgency === 'warn' ? '#F59E0B' : ACC;
+  const flagColor = taper.volumeFlag?.type === 'high' || taper.volumeFlag?.type === 'taper-warn' ? '#EF4444' : '#F59E0B';
+
   return (
     <div>
+      <div style={{
+        background: t.card, border: `2px solid ${urgencyColor}`, borderRadius: 20,
+        padding: '20px 22px', marginBottom: 18, position: 'relative', overflow: 'hidden',
+        boxShadow: `0 8px 24px ${urgencyColor}25`,
+      }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: urgencyColor }} />
+        <div style={{ position: 'absolute', top: -50, right: -50, width: 160, height: 160, background: urgencyColor, borderRadius: '50%', filter: 'blur(70px)', opacity: 0.18 }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon C={HeartPulse} size={12} color={urgencyColor} className={taper.urgency === 'critical' ? 'anim-flicker' : ''} /> Smart Taper
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: -0.4 }}>{taper.phaseLabel}</div>
+              <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>{taper.daysToEvent} day{taper.daysToEvent === 1 ? '' : 's'} to race · target volume {Math.round(taper.volumeMultiplier * 100)}%</div>
+            </div>
+            <Pill color={urgencyColor} size="lg">{taper.phase}</Pill>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>Last 7d</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{taper.days7}<span style={{ fontSize: 12, color: t.textSec, fontWeight: 500, marginLeft: 4 }}>sess</span></div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>Last 14d</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{taper.days14}<span style={{ fontSize: 12, color: t.textSec, fontWeight: 500, marginLeft: 4 }}>sess</span></div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>3w avg</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{taper.avgPerWeek.toFixed(1)}<span style={{ fontSize: 12, color: t.textSec, fontWeight: 500, marginLeft: 4 }}>/wk</span></div>
+            </div>
+          </div>
+
+          <div style={{ background: t.surfaceAlt, borderRadius: 12, padding: '12px 14px', borderLeft: `3px solid ${urgencyColor}` }}>
+            <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon C={Lightbulb} size={11} color={t.textSec} /> Recommendation
+            </div>
+            <div style={{ fontSize: 13, color: t.text, lineHeight: 1.55 }}>{taper.advice}</div>
+          </div>
+
+          {taper.volumeFlag && (
+            <div style={{
+              marginTop: 10, background: `${flagColor}18`, border: `1px solid ${flagColor}50`,
+              borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <Icon C={AlertTriangle} size={13} color={flagColor} />
+              <div style={{ fontSize: 12, color: t.text, fontWeight: 600, lineHeight: 1.4 }}>{taper.volumeFlag.text}</div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div style={{ background: GRAD.darkHero, color: '#fff', borderRadius: 18, padding: '18px 22px', marginBottom: 24, display: 'flex', gap: 16, alignItems: 'center', position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
         <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(60px)', opacity: 0.4 }} />
         <div style={{ position: 'relative', display: 'flex' }}><Icon C={Calendar} size={32} color="#fff" /></div>
@@ -2296,6 +2722,250 @@ function TrainingPlan({ profile }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function RaceDay({ workouts, pbs, profile }: any) {
+  const { t } = useTheme();
+  const [strategy, setStrategy] = useState('pb');
+  const proj = projectRace(workouts, pbs, strategy);
+  const ranking = rankStationsByWeakness(pbs);
+  const weakest = ranking[0];
+  const drills = weakest ? getDrillsForStation(weakest.station.id) : [];
+  const stratMeta = PACING_STRATEGIES.find(s => s.id === strategy);
+  const eventDays = Math.max(0, Math.floor((new Date(profile.eventDate).getTime() - new Date().getTime()) / 86400000));
+  const stationsLogged = STATIONS.filter(s => pbs[s.id]).length;
+
+  return (
+    <div>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 14, color: t.textSec, marginBottom: 4, fontWeight: 500 }}>Race readiness</div>
+        <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          Race Day <Icon C={Trophy} size={28} color={ACC} className="anim-flicker" />
+        </div>
+        <div style={{ fontSize: 13, color: t.textSec, marginTop: 6 }}>{eventDays} days · {stationsLogged}/8 stations logged{proj.hasPace ? ` · best pace ${fmtTime(proj.pace)}/km` : ' · no run data yet'}</div>
+      </div>
+
+      <div style={{
+        background: GRAD.darkHero, color: '#fff', borderRadius: 24, padding: '28px 28px', marginBottom: 20,
+        position: 'relative', overflow: 'hidden', boxShadow: t.heroShadow, border: `1px solid ${ACC}25`,
+      }}>
+        <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.45 }} />
+        <div style={{ position: 'absolute', bottom: -40, left: -40, width: 200, height: 200, background: ACC, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.15 }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Icon C={Target} size={14} color={ACC_BRIGHT} />
+            <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC_BRIGHT, fontWeight: 700, textTransform: 'uppercase' }}>Projected Finish</div>
+          </div>
+          <div style={{ fontSize: 64, fontWeight: 900, background: GRAD.orangeGlow, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: -2.5, lineHeight: 0.9 }}>{fmtHMS(proj.total)}</div>
+          <div style={{ display: 'flex', gap: 24, marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Stations</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(proj.stationsTotal)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, letterSpacing: 1.5, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Run (8km)</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(proj.runsTotal)}</div>
+            </div>
+          </div>
+          {(stationsLogged < 8 || !proj.hasPace) && (
+            <div style={{ fontSize: 11, color: '#FBBF24', marginTop: 14, fontWeight: 600, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon C={AlertTriangle} size={12} color="#FBBF24" />
+              {8 - stationsLogged > 0 && `${8 - stationsLogged} station${8 - stationsLogged > 1 ? 's' : ''} use slow-end estimates`}{!proj.hasPace && (stationsLogged < 8 ? ' · ' : '')}{!proj.hasPace && 'run pace defaulted to 6:00/km'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: t.textSec, marginBottom: 10, textTransform: 'uppercase' }}>Pacing Strategy</div>
+        <Seg value={strategy} onChange={setStrategy} options={PACING_STRATEGIES.map(s => ({ v: s.id, l: s.label }))} />
+        <div style={{ fontSize: 12, color: t.textSec, marginTop: 10, fontStyle: 'italic', paddingLeft: 4 }}>{stratMeta?.sub}</div>
+      </div>
+
+      <SectionTitle accent={ACC}>Segment Breakdown</SectionTitle>
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 18, padding: '4px 18px', marginBottom: 32, boxShadow: t.cardShadow }}>
+        {proj.stations.map((s, i) => (
+          <div key={s.id}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${t.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: t.textSec, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace', minWidth: 24 }}>R{i + 1}</span>
+                <Icon C={Footprints} size={14} color={t.textMute} />
+                <span style={{ fontSize: 13, color: t.textMute, fontWeight: 600 }}>1km Run</span>
+              </div>
+              <div style={{ fontSize: 14, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace', color: t.text, fontWeight: 700 }}>
+                {fmtTime(proj.runs[i].time)}
+                {proj.runs[i].isFallback && <span style={{ fontSize: 10, color: '#F59E0B', marginLeft: 6, fontWeight: 700 }}>EST</span>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: i < proj.stations.length - 1 ? `1px solid ${t.border}` : 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Pill grad={s.grad} size="sm">{s.abbr}</Pill>
+                <span style={{ fontSize: 14, color: t.text, fontWeight: 600 }}>{s.name}</span>
+              </div>
+              <div style={{ fontSize: 14, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace', color: t.text, fontWeight: 700 }}>
+                {fmtTime(s.time)}
+                {s.isFallback && <span style={{ fontSize: 10, color: '#F59E0B', marginLeft: 6, fontWeight: 700 }}>EST</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <SectionTitle accent={ACC}>Focus Station</SectionTitle>
+      {weakest && (
+        <div style={{
+          background: t.card, border: `2px solid ${ACC}`, borderRadius: 20,
+          padding: '22px 22px 18px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', marginBottom: 14,
+        }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: ACC }} />
+          <div style={{ position: 'absolute', top: -50, right: -50, width: 160, height: 160, background: ACC, borderRadius: '50%', filter: 'blur(60px)', opacity: 0.18 }} />
+          <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon C={AlertTriangle} size={11} color={t.textSec} /> Weakest Link
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: -0.4 }}>{weakest.station.name}</div>
+                <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>{weakest.station.desc}</div>
+              </div>
+              <Pill grad={weakest.station.grad} size="lg">{weakest.station.abbr}</Pill>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 18 }}>
+              <div>
+                <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>Your PB</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{weakest.hasData ? fmtTime(weakest.pb.time) : '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>Target</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: ACC, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtTime(weakest.fast)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: t.textSec, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>Gap</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#FBBF24', fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>
+                  {weakest.hasData ? `+${fmtTime(Math.max(0, weakest.pb.time - weakest.fast))}` : 'N/A'}
+                </div>
+              </div>
+            </div>
+            {drills.length > 0 && (
+              <div style={{ paddingTop: 16, borderTop: `1px solid ${t.border}` }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: t.textSec, marginBottom: 12, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Icon C={Dumbbell} size={12} color={t.textSec} /> Suggested Drills
+                </div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {drills.map(d => (
+                    <div key={d.id} style={{
+                      background: t.surfaceAlt, borderRadius: 12, padding: '12px 14px',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{d.name}</div>
+                        <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>
+                          {d.fields.slice(0, 3).map(f => `${f.d} ${f.l.replace(/^\w+\s/, '').toLowerCase()}`).join(' · ')}
+                        </div>
+                      </div>
+                      <Pill color={ACC} size="sm">{d.match}% MATCH</Pill>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 18, padding: '4px 20px', boxShadow: t.cardShadow }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: t.textSec, padding: '14px 0 10px', textTransform: 'uppercase' }}>All Stations · Weakest → Strongest</div>
+        {ranking.map((r, i) => (
+          <div key={r.station.id} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 0', borderBottom: i < ranking.length - 1 ? `1px solid ${t.border}` : 'none', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+              <Pill grad={r.station.grad} size="sm">{r.station.abbr}</Pill>
+              <span style={{ fontSize: 14, fontWeight: 600, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.station.name}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              {r.hasData ? (
+                <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace', color: t.textSec, minWidth: 40, textAlign: 'right' }}>{fmtTime(r.pb.time)}</span>
+              ) : (
+                <span style={{ fontSize: 11, color: t.textSec, fontStyle: 'italic', minWidth: 40, textAlign: 'right' }}>untested</span>
+              )}
+              <div style={{ width: 56, height: 6, background: t.surfaceAlt, borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, r.norm * 100)}%`, height: '100%', background: r.norm > 0.6 ? '#EF4444' : r.norm > 0.3 ? '#F59E0B' : ACC, borderRadius: 3, transition: 'width 0.5s' }} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InstallPrompt() {
+  const { t } = useTheme();
+  const [deferred, setDeferred] = useState<any>(null);
+  const [installed, setInstalled] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const onBefore = (e: any) => { e.preventDefault(); setDeferred(e); };
+    const onInstalled = () => { setInstalled(true); setDeferred(null); };
+    window.addEventListener('beforeinstallprompt', onBefore);
+    window.addEventListener('appinstalled', onInstalled);
+    if (window.matchMedia?.('(display-mode: standalone)').matches) setInstalled(true);
+    try {
+      const at = localStorage.getItem('hyrox_install_dismissed');
+      if (at && Date.now() - parseInt(at) < 7 * 86400000) setDismissed(true);
+    } catch {}
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBefore);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
+  const install = async () => {
+    if (!deferred) return;
+    try {
+      deferred.prompt();
+      const result = await deferred.userChoice;
+      setDeferred(null);
+      if (result?.outcome === 'dismissed') {
+        try { localStorage.setItem('hyrox_install_dismissed', String(Date.now())); } catch {}
+        setDismissed(true);
+      }
+    } catch {}
+  };
+
+  const dismiss = () => {
+    try { localStorage.setItem('hyrox_install_dismissed', String(Date.now())); } catch {}
+    setDismissed(true);
+  };
+
+  if (installed || dismissed || !deferred) return null;
+
+  return (
+    <div style={{
+      margin: '0 1.75rem 1rem', padding: '14px 16px',
+      background: t.card, border: `1.5px solid ${ACC}40`, borderRadius: 14,
+      display: 'flex', alignItems: 'center', gap: 12,
+      boxShadow: `0 4px 16px ${ACC}15`, position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: ACC }} />
+      <div style={{ paddingLeft: 4, flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginBottom: 2 }}>Install Hyrox Tracker</div>
+        <div style={{ fontSize: 12, color: t.textSec }}>Add to home screen for quick gym access · works offline</div>
+      </div>
+      <button onClick={install} style={{
+        background: ACC, color: '#000', border: 'none', borderRadius: 10,
+        padding: '9px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: FONT,
+        letterSpacing: 0.3, flexShrink: 0,
+      }}>INSTALL</button>
+      <button onClick={dismiss} aria-label="Dismiss" style={{
+        background: 'transparent', color: t.textSec, border: 'none',
+        padding: '6px 8px', fontSize: 16, cursor: 'pointer', fontFamily: FONT, flexShrink: 0,
+      }}>×</button>
     </div>
   );
 }
@@ -2475,10 +3145,10 @@ export default function HyroxTracker() {
   }
 
   const TABS = [
-    { id: 'dashboard', label: 'Home' }, { id: 'friends', label: 'Friends' },
-    { id: 'myweek', label: 'Week' }, { id: 'log', label: 'Log' },
-    { id: 'progress', label: 'Progress' }, { id: 'plan', label: 'Plan' },
-    { id: 'profile', label: 'Profile' },
+    { id: 'dashboard', label: 'Home' }, { id: 'race', label: 'Race' },
+    { id: 'friends', label: 'Friends' }, { id: 'myweek', label: 'Week' },
+    { id: 'log', label: 'Log' }, { id: 'progress', label: 'Progress' },
+    { id: 'plan', label: 'Plan' }, { id: 'profile', label: 'Profile' },
   ];
 
   return (
@@ -2498,7 +3168,7 @@ export default function HyroxTracker() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', background: t.tabBg, backdropFilter: t.glassBlur, borderBottom: `1px solid ${t.border}`, overflowX: 'auto', position: 'sticky', top: 0, zIndex: 9 }}>
+      <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, backdropFilter: t.glassBlur, borderBottom: `1px solid ${t.border}`, overflowX: 'auto', position: 'sticky', top: 0, zIndex: 9 }}>
         {TABS.map(tb => (
           <button key={tb.id} onClick={() => setTab(tb.id)} style={{
             flex: 1, minWidth: 74, padding: '15px 6px', fontSize: 13, fontWeight: tab === tb.id ? 800 : 600,
@@ -2509,13 +3179,16 @@ export default function HyroxTracker() {
         ))}
       </div>
 
+      <InstallPrompt />
+
       <div style={{ padding: '1.25rem 1.75rem 4rem' }}>
         {tab === 'dashboard' && <Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} />}
+        {tab === 'race' && <RaceDay workouts={workouts} pbs={pbs} profile={profile} />}
         {tab === 'friends' && <Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} />}
         {tab === 'myweek' && <MyWeek profile={profile} />}
         {tab === 'log' && <LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} />}
         {tab === 'progress' && <Progress workouts={workouts} pbs={pbs} />}
-        {tab === 'plan' && <TrainingPlan profile={profile} />}
+        {tab === 'plan' && <TrainingPlan profile={profile} workouts={workouts} />}
         {tab === 'profile' && <ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} />}
       </div>
     </div>
