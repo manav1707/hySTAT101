@@ -3508,14 +3508,15 @@ export default function HyroxTracker() {
       <InstallPrompt />
 
       <div style={{ padding: isCompact ? '0.875rem 0.875rem 3rem' : '1.25rem 1.75rem 4rem' }}>
-        {tab === 'dashboard' && <Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} />}
-        {tab === 'race' && <RaceDay workouts={workouts} pbs={pbs} profile={profile} />}
-        {tab === 'friends' && <Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} />}
-        {tab === 'myweek' && <MyWeek profile={profile} />}
-        {tab === 'log' && <LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} />}
-        {tab === 'progress' && <Progress workouts={workouts} pbs={pbs} />}
-        {tab === 'plan' && <TrainingPlan profile={profile} workouts={workouts} />}
-        {tab === 'profile' && <ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} />}
+        {/* Tabs stay mounted and only toggle visibility — switching is instant after first paint, state survives, no recharts/plan recompute. */}
+        <div style={{ display: tab === 'dashboard' ? 'block' : 'none' }}><Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>
+        <div style={{ display: tab === 'race' ? 'block' : 'none' }}><RaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>
+        <div style={{ display: tab === 'friends' ? 'block' : 'none' }}><Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>
+        <div style={{ display: tab === 'myweek' ? 'block' : 'none' }}><MyWeek profile={profile} /></div>
+        <div style={{ display: tab === 'log' ? 'block' : 'none' }}><LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>
+        <div style={{ display: tab === 'progress' ? 'block' : 'none' }}><Progress workouts={workouts} pbs={pbs} /></div>
+        <div style={{ display: tab === 'plan' ? 'block' : 'none' }}><TrainingPlan profile={profile} workouts={workouts} /></div>
+        <div style={{ display: tab === 'profile' ? 'block' : 'none' }}><ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>
       </div>
     </div>
   );
