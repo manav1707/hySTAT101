@@ -3,7 +3,7 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLin
 import {
   Flame, Dumbbell, Zap, Activity, AlertTriangle, Mic, Hand, BarChart3,
   Trash2, Award, Trophy, Check, Clipboard, Pin, CheckCircle2, MessageCircle,
-  RefreshCw, Target, FlaskConical, Lightbulb, Calendar, Moon,
+  RefreshCw, Target, Lightbulb, Calendar, Moon,
   Footprints, Wind, Droplet, Snowflake, Apple, HeartPulse,
 } from "lucide-react";
 
@@ -245,7 +245,7 @@ function extractStationSessions(workouts, stationId) {
   const sessions = [];
   workouts.forEach(w => {
     if (w.stations?.[stationId]?.time) {
-      sessions.push({ time: w.stations[stationId].time, date: w.date, weight: w.stations[stationId].weight, source: 'direct', isTest: w.isTest });
+      sessions.push({ time: w.stations[stationId].time, date: w.date, weight: w.stations[stationId].weight, source: 'direct' });
     } else if (w.translated?.length) {
       const relevant = w.translated.filter(t => t.station === stationId);
       if (relevant.length) {
@@ -256,7 +256,7 @@ function extractStationSessions(workouts, stationId) {
           return aT < bT ? a : b;
         });
         const t = translatedToStationTime(best);
-        if (t !== null) sessions.push({ time: t, date: w.date, source: 'translated', isTest: w.isTest });
+        if (t !== null) sessions.push({ time: t, date: w.date, source: 'translated' });
       }
     }
   });
@@ -484,7 +484,6 @@ function activityToWorkout(act: any) {
     translated: [],
     notes: `Imported from Strava: ${act.name}`,
     voiceMemo: null,
-    isTest: false,
   };
 }
 
@@ -1486,21 +1485,8 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
 
       {lastWorkout && (
         <div style={{ marginBottom: 28 }}>
-          <SectionTitle accent={ACC}>
-            Last Workout
-            {lastWorkout.isTest && <span style={{ marginLeft: 10, fontSize: 11, background: GRAD.amber, color: '#fff', padding: '4px 10px', borderRadius: 999, fontWeight: 700, letterSpacing: 0.5 }}>TEST</span>}
-          </SectionTitle>
-          <div style={{ position: 'relative' }}>
-            {lastWorkout.isTest && <div style={{ position: 'absolute', inset: 0, borderRadius: 18, border: '2px solid #F59E0B', pointerEvents: 'none', zIndex: 1 }} />}
-            <WorkoutSummary workout={lastWorkout} compact />
-          </div>
-          {lastWorkout.isTest && deleteWorkout && (
-            <button onClick={() => deleteWorkout(lastWorkout.id)} style={{
-              marginTop: 10, width: '100%', padding: '11px', fontSize: 13, fontWeight: 600,
-              background: 'transparent', color: '#D97706', border: '1.5px dashed #F59E0B', borderRadius: 10,
-              cursor: 'pointer', fontFamily: FONT,
-            }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Trash2} size={14} /> Delete this test workout</span></button>
-          )}
+          <SectionTitle accent={ACC}>Last Workout</SectionTitle>
+          <WorkoutSummary workout={lastWorkout} compact />
         </div>
       )}
 
@@ -2576,7 +2562,6 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
   const [memo, setMemo] = useState('');
   const [saved, setSaved] = useState(false);
   const [insightFor, setInsightFor] = useState(null);
-  const [testMode, setTestMode] = useState(false);
 
   const inp = { width: '100%', padding: '13px 15px', fontSize: 15, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: FONT, transition: 'all 0.15s' };
   const lbl = { fontSize: 12, color: t.textSec, marginBottom: 8, display: 'block', fontWeight: 600, letterSpacing: 0.2 };
@@ -2597,7 +2582,7 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
 
   const handleSave = async () => {
     if (!hasAny) return;
-    const entry = { id: Date.now(), ...draft, notes, voiceMemo: memo || null, isTest: testMode };
+    const entry = { id: Date.now(), ...draft, notes, voiceMemo: memo || null };
     const newWorkouts = [...workouts, entry];
     try {
       await saveWorkouts(newWorkouts);
@@ -2605,7 +2590,6 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
       setInsightFor({ workout: entry, allWorkouts: newWorkouts });
       setTimeout(() => {
         setSaved(false); setStationData({}); setTranslated([]); setNotes(''); setMemo(''); setRunPace(''); setRunCount(0);
-        setTestMode(false); // auto-reset test mode after save
       }, 2500);
     } catch (e) { console.error('Save failed:', e); }
   };
@@ -2639,17 +2623,6 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
         }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Target} size={14} /> Direct Hyrox</span></button>
       </div>
 
-      <button onClick={() => setTestMode(!testMode)} style={{
-        width: '100%', padding: '13px 16px', marginBottom: 16, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-        background: testMode ? GRAD.amber : t.card, color: testMode ? '#fff' : t.textSec,
-        border: `1.5px ${testMode ? 'solid #F59E0B' : `dashed ${t.borderInput}`}`,
-        borderRadius: 12, fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        boxShadow: testMode ? '0 4px 14px rgba(245,158,11,0.25)' : 'none',
-      }}>
-        <span style={{ width: 8, height: 8, borderRadius: 4, background: testMode ? '#fff' : t.borderInput }} />
-        {testMode ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={FlaskConical} size={13} /> TEST MODE — entries flagged</span> : 'Enable Test Mode'}
-      </button>
-
       <div style={{ background: t.surfaceAlt, borderRadius: 12, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: t.textSec, lineHeight: 1.5 }}>
         {mode === 'translate' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Lightbulb} size={13} /> Log regular gym exercises — we translate to Hyrox stations.</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={CheckCircle2} size={13} /> Log actual Hyrox station times and weights.</span>}
       </div>
@@ -2676,11 +2649,11 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
 
       <button onClick={handleSave} disabled={!hasAny} style={{
         marginTop: 18, width: '100%', padding: '18px', fontSize: 16, fontWeight: 800,
-        background: saved ? GRAD.green : !hasAny ? t.borderInput : testMode ? GRAD.amber : GRAD.orange,
+        background: saved ? GRAD.green : !hasAny ? t.borderInput : GRAD.orange,
         color: '#fff', border: 'none', borderRadius: 16,
         cursor: hasAny ? 'pointer' : 'not-allowed', fontFamily: FONT, letterSpacing: 0.3,
-        boxShadow: !hasAny ? 'none' : saved ? '0 8px 20px rgba(16,185,129,0.3)' : testMode ? '0 8px 20px rgba(245,158,11,0.3)' : '0 8px 20px rgba(232,69,27,0.3)',
-      }}>{saved ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon C={Check} size={16} color="#fff" /> WORKOUT SAVED!</span> : testMode ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon C={FlaskConical} size={16} color="#fff" /> SAVE TEST WORKOUT</span> : 'SAVE WORKOUT'}</button>
+        boxShadow: !hasAny ? 'none' : saved ? '0 8px 20px rgba(16,185,129,0.3)' : '0 8px 20px rgba(232,69,27,0.3)',
+      }}>{saved ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon C={Check} size={16} color="#fff" /> WORKOUT SAVED!</span> : 'SAVE WORKOUT'}</button>
 
       {insightFor && profile && (
         <PostWorkoutInsight
@@ -3380,7 +3353,7 @@ function generateSeedWorkouts() {
         id: date.getTime() + Math.floor(rand() * 1000),
         date: date.toISOString().slice(0, 10),
         sessionType: rand() < 0.5 ? 'direct' : 'translate',
-        stations, runs, translated: [], notes: '', voiceMemo: null, isTest: false,
+        stations, runs, translated: [], notes: '', voiceMemo: null,
       });
     }
   }
