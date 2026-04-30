@@ -51,6 +51,13 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
       filter: brightness(0.95);
       transition-duration: 0.08s !important;
     }
+    /* Tab bar buttons stay flat — scale/filter on tap caused a perceptible
+       "dimension shrink" between sections. Section switch should feel rigid. */
+    .hyrox-tabs button:not(:disabled):hover,
+    .hyrox-tabs button:not(:disabled):active {
+      transform: none !important;
+      filter: none !important;
+    }
     button:disabled {
       cursor: not-allowed !important;
       opacity: 0.7;
@@ -3391,6 +3398,12 @@ export default function HyroxTracker() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Snap back to top of the new section on tab switch — avoids the previous tab's
+  // scroll Y leaking into a shorter tab and feeling like a layout jump.
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [tab]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -3494,15 +3507,20 @@ export default function HyroxTracker() {
       </div>
 
       <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, backdropFilter: t.glassBlur, borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 9 }}>
-        {TABS.map(tb => (
-          <button key={tb.id} onClick={() => setTab(tb.id)} style={{
-            flex: 1, minWidth: 0, padding: isCompact ? '14px 2px' : '15px 6px', fontSize: isCompact ? 12 : 13, fontWeight: tab === tb.id ? 800 : 600,
-            color: tab === tb.id ? ACC : t.textSec, background: 'none', border: 'none', fontFamily: FONT,
-            borderBottom: `3px solid ${tab === tb.id ? ACC : 'transparent'}`, cursor: 'pointer',
-            transition: 'all 0.15s', letterSpacing: isCompact ? 0 : 0.2,
-            whiteSpace: 'nowrap', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{tb.label}</button>
-        ))}
+        {TABS.map(tb => {
+          const active = tab === tb.id;
+          return (
+            <button key={tb.id} onClick={() => setTab(tb.id)} style={{
+              flex: 1, minWidth: 0, padding: isCompact ? '14px 2px' : '15px 6px', fontSize: isCompact ? 12 : 13,
+              // Constant fontWeight — changing weight per active state shifts glyph widths and causes a tab-bar reflow on every tap.
+              fontWeight: 700,
+              color: active ? ACC : t.textSec, background: active ? `${ACC}10` : 'transparent', border: 'none', fontFamily: FONT,
+              borderBottom: `3px solid ${active ? ACC : 'transparent'}`, cursor: 'pointer',
+              transition: 'color 0.15s, background 0.15s, border-color 0.15s', letterSpacing: isCompact ? 0 : 0.2,
+              whiteSpace: 'nowrap', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{tb.label}</button>
+          );
+        })}
       </div>
 
       <InstallPrompt />
