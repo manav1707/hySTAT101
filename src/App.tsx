@@ -187,6 +187,28 @@ const EQUIV = [
   { id: 'cycle', name: 'Cycling', station: 'rowing', match: 50,
     fields: [{ k: 'distance', l: 'km', d: 5 }, { k: 'level', l: 'Lvl', d: 18 }],
     calc: v => Math.round(v.distance * 170 * (v.level / 18)) },
+  // Direct Hyrox station logging (1:1 self-match, 100%)
+  { id: 'wallballs_direct', name: 'Wall Balls', station: 'wallballs', match: 100,
+    fields: [{ k: 'sets', l: 'Sets', d: 4 }, { k: 'reps', l: 'Reps/set', d: 25 }, { k: 'weight', l: 'kg', d: 9 }],
+    calc: v => Math.round(v.sets * v.reps * Math.max(0.6, v.weight / 9)) },
+  { id: 'skierg_direct', name: 'SkiErg', station: 'skierg', match: 100,
+    fields: [{ k: 'sets', l: 'Sets', d: 3 }, { k: 'distance', l: 'm/set', d: 500 }],
+    calc: v => v.sets * v.distance },
+  { id: 'rowing_direct', name: 'Rowing', station: 'rowing', match: 100,
+    fields: [{ k: 'sets', l: 'Sets', d: 3 }, { k: 'distance', l: 'm/set', d: 500 }],
+    calc: v => v.sets * v.distance },
+  { id: 'sledpush_direct', name: 'Sled Push', station: 'sledPush', match: 100,
+    fields: [{ k: 'sets', l: 'Sets', d: 4 }, { k: 'distance', l: 'm/set', d: 40 }, { k: 'weight', l: 'kg load', d: 0 }],
+    calc: v => Math.round(v.sets * v.distance * Math.max(0.6, 0.6 + v.weight / 150)) },
+  { id: 'sledpull_direct', name: 'Sled Pull', station: 'sledPull', match: 100,
+    fields: [{ k: 'sets', l: 'Sets', d: 4 }, { k: 'distance', l: 'm/set', d: 40 }, { k: 'weight', l: 'kg load', d: 0 }],
+    calc: v => Math.round(v.sets * v.distance * Math.max(0.6, 0.6 + v.weight / 100)) },
+  { id: 'sandbaglunges_direct', name: 'Sandbag Lunges', station: 'lunges', match: 100,
+    fields: [{ k: 'sets', l: 'Sets', d: 3 }, { k: 'distance', l: 'm/set', d: 30 }, { k: 'weight', l: 'kg', d: 15 }],
+    calc: v => Math.round(v.sets * v.distance * Math.max(0.6, v.weight / 30)) },
+  { id: 'burpeeBJ_direct', name: 'Burpee BJ', station: 'burpee', match: 100,
+    fields: [{ k: 'sets', l: 'Sets', d: 4 }, { k: 'reps', l: 'Reps/set', d: 12 }],
+    calc: v => v.sets * v.reps },
 ];
 
 const STATION_META = STATIONS.reduce((m, s) => { m[s.id] = { ...s, color: ACC, grad: ACC }; return m; }, {});
@@ -459,6 +481,22 @@ function activityToWorkout(act: any) {
 
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+// Split a single line into multiple sessions, recognising common separators
+// (`,` `;` ` and ` `→` ` -> ` ` + ` ` / ` ` | ` ` & ` ` then `) while preserving
+// content inside parens/brackets so things like "(1km Run @ 11km/hr + 1 min)"
+// stay as one piece.
+function splitSessionsLine(rest: string): string[] {
+  const ph: string[] = [];
+  const protectedText = rest.replace(/\([^()]*\)|\[[^\[\]]*\]/g, m => {
+    ph.push(m);
+    return `\x00${ph.length - 1}\x00`;
+  });
+  const parts = protectedText.split(/[,;]\s*|\s+and\s+|\s*→\s*|\s+->\s+|\s+\+\s+|\s+\/\s+|\s+\|\s+|\s+&\s+|\s+then\s+/i);
+  return parts
+    .map(p => p.replace(/\x00(\d+)\x00/g, (_, idx) => ph[parseInt(idx)]).trim())
+    .filter(Boolean);
+}
+
 function parseRoutineText(raw: string) {
   if (!raw || !raw.trim()) return null;
   const dayMap: Record<string, string> = {
@@ -485,11 +523,11 @@ function parseRoutineText(raw: string) {
       if (!byDay[current]) byDay[current] = [];
       const rest = m[2]?.trim();
       if (rest) {
-        byDay[current].push(...rest.split(/[,;]\s*|\s+and\s+/i).map(s => s.trim()).filter(Boolean));
+        byDay[current].push(...splitSessionsLine(rest));
       }
     } else if (current) {
       const cleaned = line.replace(/^[\-•*›>·]\s*/, '').trim();
-      if (cleaned) byDay[current].push(cleaned);
+      if (cleaned) byDay[current].push(...splitSessionsLine(cleaned));
     }
   }
 
@@ -506,94 +544,52 @@ const EQUIPMENT_TIERS: Array<{ id: string; label: string; sub: string }> = [
 
 type DaySplit = Array<{ day: string; sessions: string[] }>;
 
-const DEFAULT_DAY_SPLITS: Record<string, Record<string, DaySplit>> = {
-  beginner: {
-    hyrox: [
-      { day: 'Mon', sessions: ['Wall balls 3×15 (6kg)', 'SkiErg 3×500m @ steady', 'Easy 2km run @ Z2'] },
-      { day: 'Wed', sessions: ['Sandbag lunges 3×20m (10kg)', 'Burpee BJ 3×10', 'Run 3×400m @ moderate, 60s rest'] },
-      { day: 'Fri', sessions: ['Sled push light 3×30m (BW)', 'Rowing 3×500m @ steady', 'Easy 3km Z2'] },
-    ],
-    gym: [
-      { day: 'Mon', sessions: ['Goblet squat 3×8 (light)', 'DB row 3×10 each side', 'Plank 3×30s', 'Easy 2km run'] },
-      { day: 'Wed', sessions: ['DB bench press 3×8', 'Lat pulldown 3×10', 'Glute bridge 3×12', 'Run 25min easy'] },
-      { day: 'Fri', sessions: ['DB Romanian deadlift 3×8', 'Step-ups 3×10/leg', 'Hanging knee raise 3×8', '3km Z2 run'] },
-    ],
-    home: [
-      { day: 'Mon', sessions: ['DB goblet squat 3×10', 'DB row 3×10/side', 'Plank 3×30s', 'Easy 2km run'] },
-      { day: 'Wed', sessions: ['KB swing 3×15', 'DB lunge 3×10/leg', 'Pushup 3×8', '3km easy run'] },
-      { day: 'Fri', sessions: ['DB single-leg deadlift 3×8/leg', 'DB carry 3×30m', 'Dead bug 3×10', '3-4km Z2'] },
-    ],
-    minimal: [
-      { day: 'Mon', sessions: ['Pushup 3×10', 'BW squat 3×15', 'Plank 3×30s', 'Easy 2km run'] },
-      { day: 'Wed', sessions: ['Walking lunge 3×20 steps', 'Burpee 3×8', 'Hollow hold 3×20s', 'Run 25min easy'] },
-      { day: 'Fri', sessions: ['Pike pushup 3×6', 'Glute bridge 3×15', 'Side plank 3×20s/side', '4km Z2 run'] },
-    ],
-  },
-  intermediate: {
-    hyrox: [
-      { day: 'Mon', sessions: ['Back squat 4×6 @ moderate', 'Sled push 4×40m (BW)', 'Wall balls 4×20 (9kg)', 'Easy 3km Z2'] },
-      { day: 'Tue', sessions: ['Run 4×1km @ race pace, 90s rest', 'SkiErg 2×500m cooldown'] },
-      { day: 'Thu', sessions: ['DB bench 4×8', 'Pullup 3×8', "Farmer's carry 4×40m (24kg)", 'Sled pull 3×30m'] },
-      { day: 'Fri', sessions: ['Wall balls 4×25 (9kg)', 'Burpee BJ 3×15', 'Sandbag lunges 3×30m (15kg)'] },
-      { day: 'Sat', sessions: ['Long run 6km @ Z2'] },
-    ],
-    gym: [
-      { day: 'Mon', sessions: ['Back squat 4×6', 'Romanian deadlift 3×8', 'DB row 3×10', 'Easy 3km Z2'] },
-      { day: 'Tue', sessions: ['Run 4×1km @ race pace, 90s rest', 'Bike 5min cooldown'] },
-      { day: 'Thu', sessions: ['Bench press 4×8', 'Pullup 3×8', 'DB carry 3×40m', 'Plank 3×45s'] },
-      { day: 'Fri', sessions: ['Tempo run 5km @ Z3', 'Hanging leg raise 3×10'] },
-      { day: 'Sat', sessions: ['Long run 6km @ Z2'] },
-    ],
-    home: [
-      { day: 'Mon', sessions: ['DB goblet squat 4×10', 'DB Romanian deadlift 3×10', 'DB row 3×10/side', 'Easy 3km Z2'] },
-      { day: 'Tue', sessions: ['Run 4×1km @ goal pace, 90s rest'] },
-      { day: 'Thu', sessions: ['DB bench 4×10', 'Pullup (band-assist) 3×8', 'KB carry 3×40m', 'Plank 3×45s'] },
-      { day: 'Fri', sessions: ['Tempo run 5km @ Z3', 'KB swing 3×20'] },
-      { day: 'Sat', sessions: ['Long run 6km @ Z2'] },
-    ],
-    minimal: [
-      { day: 'Mon', sessions: ['Pushup 4×15', 'BW squat 4×20', 'BW lunge 3×12/leg', 'Easy 3km Z2'] },
-      { day: 'Tue', sessions: ['Run 4×1km @ race pace, 90s rest'] },
-      { day: 'Thu', sessions: ['Burpee 5×10', 'Pike pushup 3×10', 'Plyo lunge 3×15', 'Plank 3×60s'] },
-      { day: 'Fri', sessions: ['Tempo run 5km @ Z3', 'Hollow hold 3×30s'] },
-      { day: 'Sat', sessions: ['Long run 7km @ Z2'] },
-    ],
-  },
-  advanced: {
-    hyrox: [
-      { day: 'Mon', sessions: ['Back squat 5×5 heavy', 'Sled push 4×50m (heavy)', 'Sled pull 4×50m', 'Wall balls 4×25 (9kg)'] },
-      { day: 'Tue', sessions: ['Run 6×1km @ race pace, 90s rest', 'SkiErg 2×1000m cooldown'] },
-      { day: 'Wed', sessions: ['Easy 4km recovery @ Z1-Z2', 'Mobility 15min'] },
-      { day: 'Thu', sessions: ['Bench press 5×5', 'Weighted pullup 4×6', "Farmer's carry 4×50m (32kg)", 'Sandbag lunges 4×50m'] },
-      { day: 'Fri', sessions: ['Tempo run 6km @ Z3-Z4', 'Wall balls 4×25', 'Burpee BJ 4×15'] },
-      { day: 'Sat', sessions: ['Long run 8-10km @ Z2'] },
-    ],
-    gym: [
-      { day: 'Mon', sessions: ['Back squat 5×5', 'Front squat 3×6', 'Box jump 3×8', 'DB row 3×10'] },
-      { day: 'Tue', sessions: ['Run 6×1km @ race pace, 90s rest', 'Bike 10min cooldown'] },
-      { day: 'Wed', sessions: ['Easy 4km recovery', 'Mobility 15min'] },
-      { day: 'Thu', sessions: ['Bench press 5×5', 'Weighted pullup 4×6', 'DB carry 4×50m heavy', 'Plank 3×60s'] },
-      { day: 'Fri', sessions: ['Tempo run 6km @ Z3', 'Walking lunge 3×20', 'Hanging leg raise 3×12'] },
-      { day: 'Sat', sessions: ['Long run 8-10km @ Z2'] },
-    ],
-    home: [
-      { day: 'Mon', sessions: ['DB goblet squat 5×10 heavy', 'DB Romanian deadlift 4×8', 'DB row 4×10', 'KB swing 3×20'] },
-      { day: 'Tue', sessions: ['Run 6×1km @ race pace, 90s rest'] },
-      { day: 'Wed', sessions: ['Easy 4km recovery', 'Mobility 15min'] },
-      { day: 'Thu', sessions: ['DB bench 5×8', 'Pullup 4×6', 'DB carry 4×50m', 'DB thruster 3×12'] },
-      { day: 'Fri', sessions: ['Tempo run 6km @ Z3', 'DB lunge 3×15/leg', 'Plank 3×60s'] },
-      { day: 'Sat', sessions: ['Long run 8-10km @ Z2'] },
-    ],
-    minimal: [
-      { day: 'Mon', sessions: ['Pushup 5×20', 'Pullup 5×8', 'BW squat 5×25', 'Pistol squat 3×5/leg'] },
-      { day: 'Tue', sessions: ['Run 6×1km @ race pace, 90s rest'] },
-      { day: 'Wed', sessions: ['Easy 4km recovery', 'Mobility 15min'] },
-      { day: 'Thu', sessions: ['Burpee 6×12', 'Plyo lunge 4×20', 'Pike pushup 4×8', 'Plank 3×60s'] },
-      { day: 'Fri', sessions: ['Tempo run 6km @ Z3', 'Jump squat 4×15', 'Hollow hold 3×30s'] },
-      { day: 'Sat', sessions: ['Long run 10km @ Z2'] },
-    ],
-  },
+// One Hyrox-centric prescription set per level. Equipment access only changes
+// the per-card swap hint (see SUBSTITUTIONS), not the prescription itself.
+const DEFAULT_DAY_SPLITS: Record<string, DaySplit> = {
+  beginner: [
+    { day: 'Mon', sessions: ['Wall Balls 3×15 (6kg)', 'SkiErg 3×500m @ steady', 'Easy 2km run @ Z2'] },
+    { day: 'Wed', sessions: ['Sandbag Lunges 3×20m (10kg)', 'Burpee BJ 3×10', 'Run 3×400m @ moderate, 60s rest'] },
+    { day: 'Fri', sessions: ['Sled Push 3×30m (BW)', 'Rowing 3×500m @ steady', 'Easy 3km Z2 run'] },
+  ],
+  intermediate: [
+    { day: 'Mon', sessions: ['Wall Balls 4×20 (9kg)', 'Sled Push 4×40m (BW)', 'Sandbag Lunges 3×30m (15kg)', 'Easy 3km Z2 run'] },
+    { day: 'Tue', sessions: ['Run 4×1km @ race pace, 90s rest', 'SkiErg 2×500m cooldown'] },
+    { day: 'Thu', sessions: ['Burpee BJ 4×12', "Farmer's Carry 4×40m (24kg)", 'Sled Pull 3×30m (BW)', 'Rowing 3×500m'] },
+    { day: 'Fri', sessions: ['Wall Balls 4×25 (9kg)', 'SkiErg 3×750m', 'Sandbag Lunges 3×40m (15kg)'] },
+    { day: 'Sat', sessions: ['Long run 6km @ Z2'] },
+  ],
+  advanced: [
+    { day: 'Mon', sessions: ['Wall Balls 5×25 (9kg)', 'Sled Push 5×50m (60kg load)', 'Sled Pull 4×50m (60kg load)', 'Sandbag Lunges 4×50m (20kg)'] },
+    { day: 'Tue', sessions: ['Run 6×1km @ race pace, 90s rest', 'SkiErg 2×1000m cooldown'] },
+    { day: 'Wed', sessions: ['Easy 4km run @ Z1-Z2', 'Rowing 3×500m @ steady'] },
+    { day: 'Thu', sessions: ['Burpee BJ 4×15', "Farmer's Carry 4×50m (32kg)", 'Rowing 4×1000m', 'Sandbag Lunges 3×50m (20kg)'] },
+    { day: 'Fri', sessions: ['Tempo run 6km @ Z3-Z4', 'Wall Balls 4×25 (9kg)', 'Burpee BJ 4×15'] },
+    { day: 'Sat', sessions: ['Long run 8km @ Z2'] },
+  ],
 };
+
+// Equipment-access swap hints. Shown under the prescription on the Log card so
+// users without specialty Hyrox gear know what to substitute. Hyrox tier = no hint.
+const SUBSTITUTIONS: Record<string, Record<string, string>> = {
+  'wall ball':      { gym: 'DB thrusters (15kg/DB)',   home: 'DB thrusters (15kg/DB)',   minimal: 'Backpack squat-press (loaded)' },
+  'sled push':      { gym: 'Heavy DB step-ups',        home: 'DB step-ups',              minimal: 'Hill sprints / heavy backpack push on tile' },
+  'sled pull':      { gym: 'Heavy DB rows',            home: 'Heavy DB rows',            minimal: 'Resistance-band rows (heavy band)' },
+  'sandbag lunge':  { gym: 'DB walking lunges',        home: 'DB walking lunges',        minimal: 'Backpack walking lunges' },
+  "farmer's carry": { gym: 'Heavy DB suitcase carry',  home: 'KB / DB carry',            minimal: 'Heavy backpack or water-jug carry' },
+  'burpee bj':      { gym: 'Burpees over a bench',     home: 'Burpees over a bench',     minimal: 'Burpees over any sturdy step (~50cm)' },
+  'skierg':         { gym: 'Cable straight-arm pulldown 4×15 + bike sprints', home: 'KB swings 4×20', minimal: 'Hill sprints 4×60s' },
+  'rowing':         { gym: 'Bike intervals (same time/distance)', home: 'Cycle 8min / KB swing intervals', minimal: 'Run intervals (same time)' },
+};
+
+function getSubstitution(prescription: string, equipment: string): string | null {
+  if (!equipment || equipment === 'hyrox') return null;
+  const lower = prescription.toLowerCase();
+  for (const key of Object.keys(SUBSTITUTIONS)) {
+    if (lower.includes(key)) return SUBSTITUTIONS[key][equipment] || null;
+  }
+  return null;
+}
 
 function adaptExtrasForEquipment(extras: string[], equipment: string): string[] {
   if (equipment === 'hyrox' || equipment === 'gym') return extras;
@@ -683,9 +679,10 @@ function generatePlan(profile: any, today: Date = new Date()) {
   const useExisting = profile.routineMode === 'existing' && profile.routine?.parsed?.days?.length;
   const rawDays = useExisting
     ? profile.routine.parsed.days
-    : (DEFAULT_DAY_SPLITS[level]?.[equipment] || DEFAULT_DAY_SPLITS.intermediate.gym);
-  // Equipment-adapt the day sessions. Default splits are already equipment-keyed
-  // so this is mainly for user-pasted routines on home/minimal tiers.
+    : (DEFAULT_DAY_SPLITS[level] || DEFAULT_DAY_SPLITS.intermediate);
+  // Default splits are now Hyrox-station-named for every tier — equipment access
+  // surfaces as a per-card swap hint instead of a rewritten prescription. The
+  // adaptExtrasForEquipment rewriter still runs on user-pasted routines as a courtesy.
   const baseDays = useExisting
     ? rawDays.map((d: any) => ({ ...d, sessions: adaptExtrasForEquipment(d.sessions, equipment) }))
     : rawDays;
@@ -713,7 +710,7 @@ function generatePlan(profile: any, today: Date = new Date()) {
       n: i + 1, start, end, phase,
       days: baseDays,
       hyroxFocus: phaseInfo.focus,
-      extraSessions: adaptExtrasForEquipment(phaseInfo.extras, equipment),
+      extraSessions: phaseInfo.extras,
       isCurrent: today >= start && today <= end,
       isPast: end.getTime() < today.getTime(),
     });
@@ -734,11 +731,14 @@ function parseExercisePrescription(text: string) {
   let sets: number | null = null;
   let reps: number | null = null;
   let unit: string | null = null;
+  let setDistance: number | null = null;
   const srMatch = s.match(/(\d+)\s*[×x]\s*(\d+(?:\.\d+)?)\s*(s|m|km)?\b/i);
   if (srMatch) {
     sets = parseInt(srMatch[1]);
     reps = parseFloat(srMatch[2]);
     unit = srMatch[3]?.toLowerCase() || null;
+    if (unit === 'm') setDistance = reps;
+    else if (unit === 'km') setDistance = reps * 1000;
     s = s.replace(srMatch[0], '').trim();
   }
   let distance: number | null = null;
@@ -752,19 +752,30 @@ function parseExercisePrescription(text: string) {
     }
   }
   const name = s.replace(/^[\s,()@]+|[\s,()@]+$/g, '').replace(/\s+/g, ' ').trim();
-  return { name, sets, reps, weight, distance, distUnit, unit, raw: text };
+  return { name, sets, reps, weight, distance, distUnit, unit, setDistance, raw: text };
 }
 
 // Map a prescription to the closest EQUIV entry by keyword. Returns null if no match.
 function findEquivMatch(prescription: { name: string; raw: string }) {
   const lower = (prescription.name + ' ' + prescription.raw).toLowerCase();
+  // Direct Hyrox station prescriptions take precedence (100% match)
+  if (lower.includes('wall ball')) return EQUIV.find(e => e.id === 'wallballs_direct');
+  if (lower.includes('sled push')) return EQUIV.find(e => e.id === 'sledpush_direct');
+  if (lower.includes('sled pull')) return EQUIV.find(e => e.id === 'sledpull_direct');
+  if (lower.includes('sandbag lunge')) return EQUIV.find(e => e.id === 'sandbaglunges_direct');
+  if (lower.includes('burpee bj') || lower.includes('burpee broad jump')) return EQUIV.find(e => e.id === 'burpeeBJ_direct');
+  if (lower.includes('skierg') || lower.includes('ski erg')) return EQUIV.find(e => e.id === 'skierg_direct');
+  if (lower.includes('rowing')) return EQUIV.find(e => e.id === 'rowing_direct');
+  // Translated lifts
   if (lower.includes('thruster')) return EQUIV.find(e => e.id === 'thrusters');
-  if (lower.includes('long run') || (lower.includes('run') && lower.includes('z2'))) return EQUIV.find(e => e.id === 'longrun');
-  if ((lower.includes('1km') || lower.includes('intervals')) && (lower.includes('×') || lower.includes('x ') || lower.includes('race pace'))) return EQUIV.find(e => e.id === 'intervals');
-  if (lower.includes("farmer")) return EQUIV.find(e => e.id === 'farmers');
+  // Run intervals: 1km or interval/intervals + a rep cue or race-pace tag
+  if ((lower.includes('1km') || lower.includes('interval')) && (lower.includes('×') || lower.includes('x ') || lower.includes('race pace'))) return EQUIV.find(e => e.id === 'intervals');
+  // Any other run prescription (e.g. "4km Run", "Long run 6km", "Run @ Z2") → long run
+  if (/\brun(?:ning|s)?\b/.test(lower)) return EQUIV.find(e => e.id === 'longrun');
+  if (lower.includes('farmer')) return EQUIV.find(e => e.id === 'farmers');
   if (lower.includes('lunge')) return EQUIV.find(e => e.id === 'lunges');
   if (lower.includes('burpee')) return EQUIV.find(e => e.id === 'burpees');
-  if (lower.includes('row') && !lower.includes('rowing')) return EQUIV.find(e => e.id === 'rows');
+  if (lower.includes('row')) return EQUIV.find(e => e.id === 'rows');
   if (lower.includes('bench')) return EQUIV.find(e => e.id === 'bench');
   if (lower.includes('deadlift')) return EQUIV.find(e => e.id === 'deadlifts');
   if (lower.includes('squat')) return EQUIV.find(e => e.id === 'squats');
@@ -1774,193 +1785,156 @@ function PasteParser({ onImport, lbl, inp }) {
   );
 }
 
-function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
-  const { t } = useTheme();
-  const [picker, setPicker] = useState('');
-  const [vals, setVals] = useState<any>({});
-  const ex = EQUIV.find(e => e.id === picker);
-  const week = profile ? getCurrentWeekPlan(profile, new Date()) : null;
-  const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
-  const defaultDay = week?.days?.find((d: any) => d.day === todayName)?.day || week?.days?.[0]?.day || '';
-  const [selectedDay, setSelectedDay] = useState<string>(defaultDay);
-  const activeDay = week?.days?.find((d: any) => d.day === selectedDay) || week?.days?.find((d: any) => d.day === defaultDay);
-
-  const handlePick = (id, overrides: any = {}) => {
-    setPicker(id);
-    const e = EQUIV.find(x => x.id === id);
-    if (e) { const defaults: any = {}; e.fields.forEach(f => { defaults[f.k] = f.d; }); setVals({ ...defaults, ...overrides }); }
-  };
-
-  const handlePrescriptionPick = (text: string) => {
-    const p = parseExercisePrescription(text);
-    const equiv = findEquivMatch(p);
-    if (!equiv) { setPicker(''); setVals({}); return null; }
-    const overrides: any = {};
-    if (p.sets != null && equiv.fields.some(f => f.k === 'sets')) overrides.sets = p.sets;
-    if (p.reps != null && equiv.fields.some(f => f.k === 'reps')) overrides.reps = p.reps;
-    if (p.weight != null && equiv.fields.some(f => f.k === 'weight')) overrides.weight = p.weight;
-    if (p.distance != null && equiv.fields.some(f => f.k === 'distance')) overrides.distance = p.distance;
-    handlePick(equiv.id, overrides);
-    if (typeof window !== 'undefined') window.scrollTo({ top: window.scrollY + 200, behavior: 'smooth' });
-    return equiv;
-  };
-
-  const preview = ex ? ex.calc(Object.fromEntries(Object.entries(vals).map(([k, v]) => {
+function DayExerciseCard({ raw, equiv, parsed, onAdd, t, inp, lbl, swap }: any) {
+  const hasReps = equiv.fields.some((f: any) => f.k === 'reps');
+  const hasDistance = equiv.fields.some((f: any) => f.k === 'distance');
+  const initial = (() => {
+    const d: any = {};
+    equiv.fields.forEach((f: any) => { d[f.k] = f.d; });
+    if (parsed.sets != null && equiv.fields.some((f: any) => f.k === 'sets')) d.sets = parsed.sets;
+    if (parsed.reps != null && hasReps) d.reps = parsed.reps;
+    if (parsed.weight != null && equiv.fields.some((f: any) => f.k === 'weight')) d.weight = parsed.weight;
+    if (parsed.distance != null && hasDistance) d.distance = parsed.distance;
+    // "N×Mm" prescriptions: when EQUIV expects a per-set distance (not reps), use setDistance.
+    if (parsed.setDistance != null && hasDistance && !hasReps) d.distance = parsed.setDistance;
+    return d;
+  })();
+  const [vals, setVals] = useState<any>(initial);
+  const meta = getStationMeta(equiv.station);
+  const color = equiv.station === 'run' ? ACC : STATION_META[equiv.station]?.color;
+  const grad = equiv.station === 'run' ? GRAD.orange : STATION_META[equiv.station]?.grad;
+  const preview = equiv.calc(Object.fromEntries(Object.entries(vals).map(([k, v]) => {
     if (v === '' || v == null) return [k, 0];
     const n = typeof v === 'string' ? parseFloat(v) : v;
     return [k, Number.isFinite(n) ? n : 0];
-  }))) : 0;
-  const meta = ex ? getStationMeta(ex.station) : null;
-  const color = ex ? (ex.station === 'run' ? ACC : STATION_META[ex.station]?.color) : t.textSec;
-  const grad = ex ? (ex.station === 'run' ? GRAD.orange : STATION_META[ex.station]?.grad) : null;
-  const pct = ex && meta ? Math.min(100, Math.round(preview * (ex.match / 100) / meta.target * 100)) : 0;
-
-  const handleAdd = () => {
-    if (!ex) return;
-    setTranslated([...translated, { exId: ex.id, name: ex.name, station: ex.station, match: ex.match, val: preview, inputs: { ...vals } }]);
-    setPicker(''); setVals({});
+  })));
+  const pct = Math.min(100, Math.round(preview * (equiv.match / 100) / meta.target * 100));
+  const compactInp = { ...inp, padding: '9px 12px', fontSize: 14, borderRadius: 9 };
+  const compactLbl = { ...lbl, fontSize: 10, marginBottom: 5 };
+  const speedField = equiv.fields.find((f: any) => f.type === 'speed');
+  const speed = speedField ? parseFloat(vals[speedField.k]) || 0 : 0;
+  const paceStr = (() => {
+    if (speed <= 0) return null;
+    const secsPerKm = Math.round(3600 / speed);
+    const m = Math.floor(secsPerKm / 60);
+    const s = secsPerKm % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  })();
+  const add = () => {
+    onAdd({ exId: equiv.id, name: equiv.name, station: equiv.station, match: equiv.match, val: preview, inputs: { ...vals } });
+    setVals(initial);
   };
+  return (
+    <div style={{ background: t.card, border: `1.5px solid ${t.border}`, borderRadius: 14, padding: 14, boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: grad }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingLeft: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{raw}</div>
+        <Pill grad={grad} size="sm">→ {meta.abbr}</Pill>
+      </div>
+      <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500, marginBottom: swap ? 4 : 12, paddingLeft: 4 }}>logs as <span style={{ color: ACC, fontWeight: 700 }}>{equiv.name}</span> · {equiv.match}% match</div>
+      {swap && (
+        <div style={{ fontSize: 11, color: t.textSec, fontStyle: 'italic', marginBottom: 12, paddingLeft: 4 }}>↳ no gear? swap: <span style={{ color: t.text, fontWeight: 600 }}>{swap}</span></div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${equiv.fields.length}, 1fr)`, gap: 8, marginBottom: 10 }}>
+        {equiv.fields.map((f: any) => (
+          <div key={f.k}>
+            <label style={compactLbl}>{f.l.toUpperCase()}</label>
+            <input type={f.type === 'text' ? 'text' : 'number'} step={f.type === 'speed' ? '0.1' : undefined} placeholder={String(f.d ?? '')} value={vals[f.k] ?? ''}
+              onChange={e => setVals({ ...vals, [f.k]: e.target.value })}
+              style={compactInp} />
+          </div>
+        ))}
+      </div>
+      {paceStr && (
+        <div style={{ background: t.surfaceAlt, borderRadius: 10, padding: '9px 12px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>Pace from {speed} km/hr</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: t.text, letterSpacing: -0.4 }}>{paceStr}<span style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>/km</span></div>
+        </div>
+      )}
+      <div style={{ background: grad, color: '#fff', borderRadius: 10, padding: '10px 12px', marginBottom: 10, boxShadow: `0 3px 10px ${color}25` }}>
+        <div style={{ fontSize: 9, letterSpacing: 1.4, fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', opacity: 0.9 }}>Hyrox Equivalent</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.6 }}>{preview}</span>
+          <span style={{ fontSize: 11, opacity: 0.9 }}>{meta.unit} of {meta.name}</span>
+        </div>
+        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 3 }}>{pct}% of race target</div>
+      </div>
+      <button onClick={add} style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, background: grad, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: FONT, boxShadow: `0 3px 10px ${color}25` }}>+ ADD TO WORKOUT</button>
+    </div>
+  );
+}
 
-  const remove = (i) => setTranslated(translated.filter((_, idx) => idx !== i));
+function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
+  const { t } = useTheme();
+  const week = profile ? getCurrentWeekPlan(profile, new Date()) : null;
+  const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+  const activeDay = week?.days?.find((d: any) => d.day === todayName);
+
+  const onAdd = (item: any) => setTranslated([...translated, item]);
+  const remove = (i: number) => setTranslated(translated.filter((_, idx) => idx !== i));
 
   return (
     <div>
       <PasteParser onImport={(items) => setTranslated([...translated, ...items])} lbl={lbl} inp={inp} />
 
-      {week && week.days?.length > 0 && activeDay && (() => {
-        const isToday = activeDay.day === todayName;
+      {week && activeDay && (() => {
         const items = (activeDay.sessions || []).map((s: string) => {
           const p = parseExercisePrescription(s);
           const m = findEquivMatch(p);
           return { raw: s, parsed: p, match: m };
         });
+        const matched = items.filter((it: any) => it.match);
+        const unmatched = items.filter((it: any) => !it.match);
         return (
           <div style={{ marginBottom: 22 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: ACC, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Icon C={Calendar} size={12} color={ACC} /> Plan · {activeDay.day}{isToday && <span style={{ background: ACC, color: '#000', fontSize: 9, padding: '2px 7px', borderRadius: 999, fontWeight: 800, letterSpacing: 0.5, marginLeft: 4 }}>TODAY</span>}
+                <Icon C={Calendar} size={12} color={ACC} /> Today · {activeDay.day}
               </div>
               <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>Week {week.n} · {week.phase?.label}</div>
             </div>
 
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
-              {week.days.map((d: any) => {
-                const active = d.day === activeDay.day;
-                const today = d.day === todayName;
-                return (
-                  <button key={d.day} onClick={() => setSelectedDay(d.day)} style={{
-                    padding: '8px 14px', fontSize: 12, fontWeight: 800, borderRadius: 999, cursor: 'pointer', fontFamily: FONT,
-                    background: active ? ACC : t.surfaceAlt,
-                    color: active ? '#000' : (today ? ACC : t.textSec),
-                    border: `1.5px solid ${active ? ACC : (today ? `${ACC}60` : t.border)}`,
-                    flexShrink: 0, letterSpacing: 0.3,
-                  }}>{d.day}</button>
-                );
-              })}
-            </div>
+            {matched.length > 0 ? (
+              <div style={{ display: 'grid', gap: 12 }}>
+                {matched.map((it: any, i: number) => (
+                  <DayExerciseCard key={`${activeDay.day}_${i}_${it.raw}`} raw={it.raw} parsed={it.parsed} equiv={it.match} onAdd={onAdd} t={t} inp={inp} lbl={lbl} swap={getSubstitution(it.raw, profile?.equipment || 'gym')} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ background: t.surfaceAlt, border: `1px dashed ${t.border}`, borderRadius: 12, padding: '14px 16px', textAlign: 'center', fontSize: 12, color: t.textSec, fontStyle: 'italic' }}>
+                No Hyrox-translatable exercises in today's plan. Use paste-import above for custom logging.
+              </div>
+            )}
 
-            <div style={{ display: 'grid', gap: 8 }}>
-              {items.map((it: any, i: number) => {
-                const station = it.match ? getStationMeta(it.match.station) : null;
-                const stationGrad = it.match ? (it.match.station === 'run' ? GRAD.orange : STATION_META[it.match.station]?.grad) : null;
-                const isActive = it.match && picker === it.match.id;
-                return (
-                  <button key={i} onClick={() => handlePrescriptionPick(it.raw)} disabled={!it.match} style={{
-                    width: '100%', textAlign: 'left' as const, padding: '12px 14px', cursor: it.match ? 'pointer' : 'not-allowed',
-                    background: isActive ? `${ACC}15` : t.card,
-                    border: `1.5px solid ${isActive ? ACC : t.border}`,
-                    borderRadius: 12, fontFamily: FONT,
-                    opacity: it.match ? 1 : 0.6,
-                    position: 'relative', overflow: 'hidden',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-                  }}>
-                    {stationGrad && <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: stationGrad }} />}
-                    <div style={{ paddingLeft: stationGrad ? 4 : 0, minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>{it.raw}</div>
-                      <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>
-                        {it.match ? <>Tap to log → fills as <span style={{ color: ACC, fontWeight: 700 }}>{it.match.name}</span> ({station?.abbr})</> : 'No Hyrox equivalent — won\'t count toward race coverage'}
-                      </div>
+            {unmatched.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 8, textTransform: 'uppercase', paddingLeft: 4 }}>Other prescribed (no Hyrox equivalent)</div>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {unmatched.map((it: any, i: number) => (
+                    <div key={i} style={{ padding: '10px 12px', background: t.surfaceAlt, border: `1px solid ${t.border}`, borderRadius: 10, fontSize: 12, color: t.textSec, opacity: 0.75 }}>
+                      {it.raw}
                     </div>
-                    {it.match && <Pill grad={stationGrad} size="sm">{station?.abbr}</Pill>}
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ fontSize: 11, color: t.textSec, marginTop: 10, fontStyle: 'italic', paddingLeft: 4 }}>Tap a prescription, then edit sets/reps/weight to what you actually did. Switch days above to log other sessions.</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ fontSize: 11, color: t.textSec, marginTop: 12, fontStyle: 'italic', paddingLeft: 4 }}>Edit each exercise's sets/reps/weight to what you actually did, then tap Add.</div>
           </div>
         );
       })()}
 
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>{week ? 'Or Pick Other' : 'Or Pick Manually'}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: 10, marginBottom: 18 }}>
-        {EQUIV.map(e => {
-          const st = getStationMeta(e.station);
-          const col = e.station === 'run' ? ACC : STATION_META[e.station]?.color;
-          const g = e.station === 'run' ? GRAD.orange : STATION_META[e.station]?.grad;
-          return (
-            <button key={e.id} onClick={() => handlePick(e.id)} style={{
-              padding: '12px 14px', fontSize: 13, borderRadius: 14, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-              background: picker === e.id ? col + '12' : t.card,
-              border: `1.5px solid ${picker === e.id ? col : t.border}`,
-              boxShadow: picker === e.id ? `0 4px 16px ${col}25` : t.cardShadow,
-              position: 'relative', overflow: 'hidden',
-            }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: g }} />
-              <div style={{ fontWeight: 700, color: t.text, marginBottom: 3, fontSize: 14 }}>{e.name}</div>
-              <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>→ {st.abbr} · {e.match}%</div>
-            </button>
-          );
-        })}
-      </div>
-
-      {ex && (() => {
-        const compactInp = { ...inp, padding: '9px 12px', fontSize: 14, borderRadius: 9 };
-        const compactLbl = { ...lbl, fontSize: 10, marginBottom: 5 };
-        return (
-        <div style={{ background: t.card, border: `1.5px solid ${color}`, borderRadius: 14, padding: 14, marginBottom: 14, boxShadow: `0 4px 16px ${color}15`, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: grad }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{ex.name}</div>
-            <Pill grad={grad} size="sm">→ {meta.abbr}</Pill>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${ex.fields.length}, 1fr)`, gap: 8, marginBottom: 10 }}>
-            {ex.fields.map(f => (
-              <div key={f.k}>
-                <label style={compactLbl}>{f.l.toUpperCase()}</label>
-                <input type={f.type === 'text' ? 'text' : 'number'} step={f.type === 'speed' ? '0.1' : undefined} placeholder={String(f.d ?? '')} value={vals[f.k] ?? ''}
-                  onChange={e => setVals({ ...vals, [f.k]: e.target.value })}
-                  style={compactInp} />
-              </div>
-            ))}
-          </div>
-          {(() => {
-            const speedField = ex.fields.find(f => f.type === 'speed');
-            if (!speedField) return null;
-            const speed = parseFloat(vals[speedField.k]) || 0;
-            if (speed <= 0) return null;
-            const secsPerKm = Math.round(3600 / speed);
-            const m = Math.floor(secsPerKm / 60);
-            const s = secsPerKm % 60;
-            const paceStr = `${m}:${String(s).padStart(2, '0')}`;
-            return (
-              <div style={{ background: t.surfaceAlt, borderRadius: 12, padding: '12px 16px', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>Pace from {speed} km/hr</div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: t.text, letterSpacing: -0.5 }}>{paceStr}<span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>/km</span></div>
-              </div>
-            );
-          })()}
-          <div style={{ background: grad, color: '#fff', borderRadius: 10, padding: '11px 14px', marginBottom: 10, boxShadow: `0 4px 14px ${color}25` }}>
-            <div style={{ fontSize: 10, letterSpacing: 1.4, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', opacity: 0.9 }}>Hyrox Equivalent</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-              <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: -0.7 }}>{preview}</span>
-              <span style={{ fontSize: 12, opacity: 0.9 }}>{meta.unit} of {meta.name}</span>
-            </div>
-            <div style={{ fontSize: 11, opacity: 0.85, marginTop: 4 }}>{pct}% of race target · {ex.match}% pattern match</div>
-          </div>
-          <button onClick={handleAdd} style={{ width: '100%', padding: '11px', fontSize: 13, fontWeight: 700, background: grad, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: FONT, boxShadow: `0 3px 10px ${color}25` }}>+ ADD TO WORKOUT</button>
+      {week && !activeDay && (
+        <div style={{ background: t.surfaceAlt, border: `1px dashed ${t.border}`, borderRadius: 12, padding: '16px', textAlign: 'center', fontSize: 13, color: t.textSec, marginBottom: 18 }}>
+          Rest day — nothing scheduled for {todayName}. Use paste-import above to log anything else.
         </div>
-        );
-      })()}
+      )}
+
+      {!week && (
+        <div style={{ background: t.surfaceAlt, border: `1px dashed ${t.border}`, borderRadius: 12, padding: '16px', textAlign: 'center', fontSize: 13, color: t.textSec, marginBottom: 18 }}>
+          Set up your profile and weekly plan to see today's exercises here.
+        </div>
+      )}
 
       {translated.length > 0 && (
         <div style={{ marginTop: 18 }}>
@@ -2075,6 +2049,71 @@ function DirectMode({ stationData, setStation, runCount, setRunCount, runPace, s
   );
 }
 
+// Diff a logged workout against today's planned prescriptions. Returns null if
+// there's no plan or nothing today, otherwise a per-prescription adherence
+// breakdown so the coach can be specific instead of generic.
+function computePlanAdherence(workout: any, profile: any) {
+  if (!profile) return null;
+  const when = workout?.date ? new Date(workout.date) : new Date();
+  const week = getCurrentWeekPlan(profile, when);
+  if (!week) return null;
+  const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][when.getDay()];
+  const day = (week.days || []).find((d: any) => d.day === todayName);
+  if (!day || !day.sessions?.length) return null;
+
+  const prescribed = day.sessions.map((raw: string) => {
+    const parsed = parseExercisePrescription(raw);
+    const match = findEquivMatch(parsed);
+    return { raw, parsed, match };
+  }).filter((p: any) => p.match);
+
+  if (!prescribed.length) return { hasPlan: true, prescribed: 0, items: [], overall: 'no-translatable' };
+
+  const logged = workout?.translated || [];
+  const stationLogs = workout?.stations || {};
+  const hasRun = !!(workout?.runs && workout.runs.count > 0);
+
+  const items = prescribed.map((p: any) => {
+    const targetStation = p.match.station;
+    const matchingLogs = logged.filter((l: any) => l.station === targetStation);
+    const stationLog = stationLogs[targetStation];
+    const wasLogged = matchingLogs.length > 0 || !!stationLog?.time || (targetStation === 'run' && hasRun);
+
+    if (!wasLogged) return { ...p, status: 'skipped' as const, issues: [] as string[] };
+
+    const lg = matchingLogs[0];
+    if (!lg) return { ...p, status: 'done' as const, issues: [] as string[] };
+
+    const inp = lg.inputs || {};
+    const issues: string[] = [];
+    const num = (v: any) => { const n = typeof v === 'string' ? parseFloat(v) : v; return Number.isFinite(n) ? n : null; };
+    const ls = num(inp.sets), lr = num(inp.reps), lw = num(inp.weight), ld = num(inp.distance);
+    const prescribedDist = p.parsed.distance ?? p.parsed.setDistance;
+    if (p.parsed.sets != null && ls != null && ls < p.parsed.sets) issues.push('sets');
+    if (p.parsed.reps != null && lr != null && lr < p.parsed.reps) issues.push('reps');
+    if (p.parsed.weight != null && p.parsed.weight > 0 && lw != null && lw < p.parsed.weight) issues.push('weight');
+    if (prescribedDist != null && ld != null && ld < prescribedDist) issues.push('distance');
+
+    return { ...p, status: (issues.length ? 'partial' : 'done') as 'partial' | 'done', issues, logged: lg };
+  });
+
+  const done = items.filter(i => i.status === 'done').length;
+  const partial = items.filter(i => i.status === 'partial').length;
+  const skipped = items.filter(i => i.status === 'skipped').length;
+  const prescribedStations = new Set(prescribed.map((p: any) => p.match.station));
+  const offPlan = logged.filter((l: any) => !prescribedStations.has(l.station)).length;
+
+  let overall: 'perfect' | 'all-skipped' | 'mostly-skipped' | 'partial' | 'mixed' | 'plan-plus';
+  if (skipped === items.length) overall = 'all-skipped';
+  else if (done === items.length && offPlan === 0) overall = 'perfect';
+  else if (done === items.length && offPlan > 0) overall = 'plan-plus';
+  else if (skipped > 0 && done === 0) overall = 'mostly-skipped';
+  else if (partial > 0 && skipped === 0) overall = 'partial';
+  else overall = 'mixed';
+
+  return { hasPlan: true, prescribed: items.length, done, partial, skipped, offPlan, items, overall };
+}
+
 function getRecoveryTips(workout: any, allWorkouts: any[] = [], profile: any = null) {
   const stationIds = Object.keys(workout?.stations || {});
   const hasRun = !!(workout?.runs && workout.runs.count > 0);
@@ -2111,7 +2150,74 @@ function getRecoveryTips(workout: any, allWorkouts: any[] = [], profile: any = n
   const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
   const pick = (arr: any[]) => arr[Math.floor(rand() * arr.length)];
 
-  const cands: Record<string, any[]> = { mobility: [], fuel: [], modality: [], context: [], soft: [] };
+  const cands: Record<string, any[]> = { adherence: [], mobility: [], fuel: [], modality: [], context: [], soft: [] };
+
+  // --- ADHERENCE (plan vs reality, with empathy) ---
+  const adh = computePlanAdherence(workout, profile);
+  if (adh && adh.prescribed > 0) {
+    const skippedNames = adh.items.filter((i: any) => i.status === 'skipped').map((i: any) => i.match.name);
+    const partialNames = adh.items.filter((i: any) => i.status === 'partial').map((i: any) => i.match.name);
+    const weightDownItems = adh.items.filter((i: any) => i.issues?.includes('weight'));
+    const setsRepsDownItems = adh.items.filter((i: any) => i.issues?.some((x: string) => x === 'sets' || x === 'reps'));
+
+    if (adh.overall === 'perfect') {
+      cands.adherence.push({ icon: Check, title: 'Plan executed clean', body: pick([
+        'Hit every prescribed station today — no shortcuts. The boring days build the race.',
+        "Followed today's plan to the letter. Consistency like this is what compounds.",
+        "Plan complete, no skips. That's the quiet work that wins on race day.",
+        'Nailed the script. Notice what made today flow — sleep, food, timing — and replicate.',
+      ])});
+    } else if (adh.overall === 'all-skipped') {
+      cands.adherence.push({ icon: MessageCircle, title: "Today didn't go to plan", body: pick([
+        `${skippedNames.length === 1 ? skippedNames[0] + ' got skipped' : `All ${skippedNames.length} planned items missed`} — life happens. Tomorrow's a fresh window.`,
+        "Plan got cut short today. No drama — note why (energy, time, niggle?), and slot it back this week.",
+        "Off the rails today. What matters is the next session, not this one. Pick tomorrow's slot now.",
+        "Miss happens to everyone training for this. The streak isn't broken — show up tomorrow.",
+      ])});
+    } else if (adh.overall === 'mostly-skipped') {
+      cands.adherence.push({ icon: MessageCircle, title: 'Partial session — that still counts', body: pick([
+        `Got through ${adh.done + adh.partial} of ${adh.prescribed} today. Skipped: ${skippedNames.join(', ')}. Some work beats none.`,
+        `Most of the plan went unlogged — was time the issue, or energy? Voice-memo it so the next plan can flex.`,
+        `Today was light. Don't double-up tomorrow to "make up" — that compounds fatigue. Just hit the next one as written.`,
+      ])});
+    } else if (adh.overall === 'partial') {
+      const doneCount = adh.done + adh.partial;
+      const pct = Math.round(((adh.done + adh.partial * 0.6) / adh.prescribed) * 100);
+      cands.adherence.push({ icon: HeartPulse, title: 'Came in under plan', body: pick([
+        `Logged ${doneCount} of ${adh.prescribed}${partialNames.length ? ` — ${partialNames.join(', ')} below volume` : ''}. The work you did still counts.`,
+        `Volume was ~${pct}% of plan today. If this is rare, ignore it. If recurring, ease the prescription before fatigue compounds.`,
+        `Under plan today — fatigue, time, or just a tough day. Notice the pattern, not the one session.`,
+        `Did less than written. That can be smart load management, or a sign to dial back this week. Voice-memo which one.`,
+      ])});
+    } else if (adh.overall === 'mixed') {
+      cands.adherence.push({ icon: AlertTriangle, title: 'Mixed bag today', body: pick([
+        `${adh.done} clean, ${adh.partial} partial, ${adh.skipped} skipped. Real life vs plan — happens.`,
+        `Some hit, some missed${skippedNames.length ? ` (${skippedNames.slice(0, 2).join(', ')}${skippedNames.length > 2 ? '…' : ''})` : ''}. Patterns matter more than one session.`,
+        `Today was a triage session. That's fine — name what got bumped and decide if it's a one-off.`,
+      ])});
+    } else if (adh.overall === 'plan-plus') {
+      cands.adherence.push({ icon: Trophy, title: 'Plan + extras', body: pick([
+        `Hit the plan and added ${adh.offPlan} extra. Nice — just don't make this a habit if recovery is tight.`,
+        `Bonus volume on top of the plan. Track sleep + soreness this week; otherwise stick to the script.`,
+        `Above-plan day. Reward yourself with proper food and sleep, not another session tomorrow.`,
+      ])});
+    }
+
+    // Empathy when weights came in below prescription — separate slot, often useful even if overall was decent
+    if (weightDownItems.length && adh.overall !== 'all-skipped') {
+      cands.adherence.push({ icon: Dumbbell, title: 'Lifted lighter than plan', body: pick([
+        `Used lighter weight on ${weightDownItems.map((i: any) => i.match.name).slice(0, 2).join(', ')} today. If form was tight or fatigue was high, that was the right call.`,
+        `Weight under prescribed — note why in the memo so future-you knows. Smart load management isn't quitting.`,
+        `Went lighter than plan. Either listen and recover more, or repeat at plan weight in 48h to confirm it was stress, not a regression.`,
+      ])});
+    } else if (setsRepsDownItems.length && adh.overall !== 'all-skipped' && !weightDownItems.length) {
+      cands.adherence.push({ icon: Activity, title: 'Volume short on a couple', body: pick([
+        `Cut sets/reps on ${setsRepsDownItems.map((i: any) => i.match.name).slice(0, 2).join(', ')}. If pace held, you protected quality — that's a win.`,
+        `Reps came in under plan. Better than grinding garbage reps with broken form. Tomorrow: same target, fresh legs.`,
+      ])});
+    }
+  }
+
 
   // --- MOBILITY ---
   if (heavy.length >= 2) cands.mobility.push({ icon: Footprints, title: 'Mobility flow', body: pick([
@@ -2189,12 +2295,13 @@ function getRecoveryTips(workout: any, allWorkouts: any[] = [], profile: any = n
     'Tomorrow: 80% of effort on one weakness, 20% maintenance.',
   ])});
 
-  // Pull one tip per category, in order, until we have 3 — guarantees variety
+  // Adherence always leads when we have a plan to compare against — that's the
+  // empathy/contextual slot. The remaining 2 slots rotate through other categories.
+  const picked: any[] = [];
+  if (cands.adherence.length) picked.push(pick(cands.adherence));
   const order = ['mobility', 'fuel', 'modality', 'context', 'soft'];
-  // Rotate the starting category by workout id so different logs lead with different angles
   const offset = Math.floor(rand() * order.length);
   const rotated = [...order.slice(offset), ...order.slice(0, offset)];
-  const picked: any[] = [];
   for (const cat of rotated) {
     if (cands[cat]?.length && picked.length < 3) picked.push(pick(cands[cat]));
   }
