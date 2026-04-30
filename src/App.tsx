@@ -3381,7 +3381,15 @@ export default function HyroxTracker() {
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isCompact, setIsCompact] = useState(typeof window !== 'undefined' && window.innerWidth < 480);
   const { t, mode, setMode } = useTheme();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setIsCompact(window.innerWidth < 480);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -3463,42 +3471,43 @@ export default function HyroxTracker() {
 
   const TABS = [
     { id: 'dashboard', label: 'Home' }, { id: 'race', label: 'Race' },
-    { id: 'friends', label: 'Friends' }, { id: 'myweek', label: 'Week' },
-    { id: 'log', label: 'Log' }, { id: 'progress', label: 'Progress' },
+    { id: 'friends', label: 'Crew' }, { id: 'myweek', label: 'Week' },
+    { id: 'log', label: 'Log' }, { id: 'progress', label: 'Stats' },
     { id: 'plan', label: 'Plan' }, { id: 'profile', label: 'Profile' },
   ];
 
   return (
-    <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh' }}>
-      <div style={{ background: t.headerBg, padding: '28px 26px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
+    <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: isCompact ? 14 : 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh' }}>
+      <div style={{ background: t.headerBg, padding: isCompact ? '16px 14px 14px' : '28px 26px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${ACC} 30%, ${ACC} 70%, transparent)`, opacity: 0.7 }} />
         <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: ACC, fontWeight: 800, marginBottom: 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 2 : 3, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACC, boxShadow: `0 0 8px ${ACC}` }} />
             Hyrox · {profile.eventCity}
           </div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1 }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 6, fontWeight: 500, letterSpacing: 0.3 }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          <div style={{ fontSize: isCompact ? 24 : 32, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1 }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
+          <div style={{ fontSize: isCompact ? 11 : 12, color: '#9ca3af', marginTop: isCompact ? 4 : 6, fontWeight: 500, letterSpacing: 0.3 }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, position: 'relative' }}>
           <Countdown eventDate={profile.eventDate} />
         </div>
       </div>
 
-      <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, backdropFilter: t.glassBlur, borderBottom: `1px solid ${t.border}`, overflowX: 'auto', position: 'sticky', top: 0, zIndex: 9 }}>
+      <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, backdropFilter: t.glassBlur, borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 9 }}>
         {TABS.map(tb => (
           <button key={tb.id} onClick={() => setTab(tb.id)} style={{
-            flex: 1, minWidth: 74, padding: '15px 6px', fontSize: 13, fontWeight: tab === tb.id ? 800 : 600,
+            flex: 1, minWidth: 0, padding: isCompact ? '14px 2px' : '15px 6px', fontSize: isCompact ? 12 : 13, fontWeight: tab === tb.id ? 800 : 600,
             color: tab === tb.id ? ACC : t.textSec, background: 'none', border: 'none', fontFamily: FONT,
             borderBottom: `3px solid ${tab === tb.id ? ACC : 'transparent'}`, cursor: 'pointer',
-            transition: 'all 0.15s', letterSpacing: 0.2,
+            transition: 'all 0.15s', letterSpacing: isCompact ? 0 : 0.2,
+            whiteSpace: 'nowrap', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{tb.label}</button>
         ))}
       </div>
 
       <InstallPrompt />
 
-      <div style={{ padding: '1.25rem 1.75rem 4rem' }}>
+      <div style={{ padding: isCompact ? '0.875rem 0.875rem 3rem' : '1.25rem 1.75rem 4rem' }}>
         {tab === 'dashboard' && <Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} />}
         {tab === 'race' && <RaceDay workouts={workouts} pbs={pbs} profile={profile} />}
         {tab === 'friends' && <Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} />}
