@@ -1781,6 +1781,9 @@ function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
   const ex = EQUIV.find(e => e.id === picker);
   const week = profile ? getCurrentWeekPlan(profile, new Date()) : null;
   const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+  const defaultDay = week?.days?.find((d: any) => d.day === todayName)?.day || week?.days?.[0]?.day || '';
+  const [selectedDay, setSelectedDay] = useState<string>(defaultDay);
+  const activeDay = week?.days?.find((d: any) => d.day === selectedDay) || week?.days?.find((d: any) => d.day === defaultDay);
 
   const handlePick = (id, overrides: any = {}) => {
     setPicker(id);
@@ -1824,69 +1827,69 @@ function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
     <div>
       <PasteParser onImport={(items) => setTranslated([...translated, ...items])} lbl={lbl} inp={inp} />
 
-      {week && week.days?.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: ACC, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon C={Calendar} size={12} color={ACC} /> This Week's Plan
+      {week && week.days?.length > 0 && activeDay && (() => {
+        const isToday = activeDay.day === todayName;
+        const items = (activeDay.sessions || []).map((s: string) => {
+          const p = parseExercisePrescription(s);
+          const m = findEquivMatch(p);
+          return { raw: s, parsed: p, match: m };
+        });
+        return (
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: ACC, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon C={Calendar} size={12} color={ACC} /> Plan · {activeDay.day}{isToday && <span style={{ background: ACC, color: '#000', fontSize: 9, padding: '2px 7px', borderRadius: 999, fontWeight: 800, letterSpacing: 0.5, marginLeft: 4 }}>TODAY</span>}
+              </div>
+              <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>Week {week.n} · {week.phase?.label}</div>
             </div>
-            <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>Week {week.n} · {week.phase?.label}</div>
+
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, overflowX: 'auto', paddingBottom: 2 }}>
+              {week.days.map((d: any) => {
+                const active = d.day === activeDay.day;
+                const today = d.day === todayName;
+                return (
+                  <button key={d.day} onClick={() => setSelectedDay(d.day)} style={{
+                    padding: '8px 14px', fontSize: 12, fontWeight: 800, borderRadius: 999, cursor: 'pointer', fontFamily: FONT,
+                    background: active ? ACC : t.surfaceAlt,
+                    color: active ? '#000' : (today ? ACC : t.textSec),
+                    border: `1.5px solid ${active ? ACC : (today ? `${ACC}60` : t.border)}`,
+                    flexShrink: 0, letterSpacing: 0.3,
+                  }}>{d.day}</button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              {items.map((it: any, i: number) => {
+                const station = it.match ? getStationMeta(it.match.station) : null;
+                const stationGrad = it.match ? (it.match.station === 'run' ? GRAD.orange : STATION_META[it.match.station]?.grad) : null;
+                const isActive = it.match && picker === it.match.id;
+                return (
+                  <button key={i} onClick={() => handlePrescriptionPick(it.raw)} disabled={!it.match} style={{
+                    width: '100%', textAlign: 'left' as const, padding: '12px 14px', cursor: it.match ? 'pointer' : 'not-allowed',
+                    background: isActive ? `${ACC}15` : t.card,
+                    border: `1.5px solid ${isActive ? ACC : t.border}`,
+                    borderRadius: 12, fontFamily: FONT,
+                    opacity: it.match ? 1 : 0.6,
+                    position: 'relative', overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                  }}>
+                    {stationGrad && <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: stationGrad }} />}
+                    <div style={{ paddingLeft: stationGrad ? 4 : 0, minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 2 }}>{it.raw}</div>
+                      <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>
+                        {it.match ? <>Tap to log → fills as <span style={{ color: ACC, fontWeight: 700 }}>{it.match.name}</span> ({station?.abbr})</> : 'No Hyrox equivalent — won\'t count toward race coverage'}
+                      </div>
+                    </div>
+                    {it.match && <Pill grad={stationGrad} size="sm">{station?.abbr}</Pill>}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: t.textSec, marginTop: 10, fontStyle: 'italic', paddingLeft: 4 }}>Tap a prescription, then edit sets/reps/weight to what you actually did. Switch days above to log other sessions.</div>
           </div>
-          <div style={{ display: 'grid', gap: 14 }}>
-            {week.days.map((day: any) => {
-              const isToday = day.day === todayName;
-              const items = (day.sessions || []).map((s: string) => {
-                const p = parseExercisePrescription(s);
-                const m = findEquivMatch(p);
-                return { raw: s, parsed: p, match: m };
-              });
-              return (
-                <div key={day.day} style={{
-                  background: isToday ? `linear-gradient(135deg, ${ACC}10 0%, ${ACC}05 100%)` : t.surfaceAlt,
-                  border: `1.5px solid ${isToday ? ACC : t.border}`,
-                  borderRadius: 14, padding: '12px 14px',
-                  boxShadow: isToday ? `0 4px 16px ${ACC}20` : 'none',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? ACC : t.textSec, minWidth: 36 }}>{day.day}</span>
-                    {isToday && <span style={{ background: ACC, color: '#000', fontSize: 9, padding: '2px 8px', borderRadius: 999, fontWeight: 800, letterSpacing: 0.5 }}>TODAY</span>}
-                  </div>
-                  <div style={{ display: 'grid', gap: 6 }}>
-                    {items.map((it: any, i: number) => {
-                      const station = it.match ? getStationMeta(it.match.station) : null;
-                      const stationGrad = it.match ? (it.match.station === 'run' ? GRAD.orange : STATION_META[it.match.station]?.grad) : null;
-                      const isActive = it.match && picker === it.match.id;
-                      return (
-                        <button key={i} onClick={() => handlePrescriptionPick(it.raw)} disabled={!it.match} style={{
-                          width: '100%', textAlign: 'left' as const, padding: '10px 12px', cursor: it.match ? 'pointer' : 'not-allowed',
-                          background: isActive ? `${ACC}18` : t.card,
-                          border: `1px solid ${isActive ? ACC : t.border}`,
-                          borderRadius: 10, fontFamily: FONT,
-                          opacity: it.match ? 1 : 0.6,
-                          position: 'relative', overflow: 'hidden',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                        }}>
-                          {stationGrad && <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: stationGrad }} />}
-                          <div style={{ paddingLeft: stationGrad ? 6 : 0, minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{it.raw}</div>
-                            {it.match ? (
-                              <div style={{ fontSize: 10, color: t.textSec, fontWeight: 500, marginTop: 1 }}>→ {it.match.name} ({station?.abbr})</div>
-                            ) : (
-                              <div style={{ fontSize: 10, color: t.textSec, fontStyle: 'italic', marginTop: 1 }}>no Hyrox equivalent</div>
-                            )}
-                          </div>
-                          {it.match && <Pill grad={stationGrad} size="sm">{station?.abbr}</Pill>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 11, color: t.textSec, marginTop: 12, fontStyle: 'italic', paddingLeft: 4 }}>Tap a prescription, then edit the sets/reps/weight to what you actually did. Today's day is highlighted.</div>
-        </div>
-      )}
+        );
+      })()}
 
       <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>{week ? 'Or Pick Other' : 'Or Pick Manually'}</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: 10, marginBottom: 18 }}>
