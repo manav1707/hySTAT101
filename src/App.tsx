@@ -136,6 +136,10 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     /* Hide scrollbar on the tab bar while keeping it scrollable on narrow widths */
     .hyrox-tabs::-webkit-scrollbar { display: none; height: 0; width: 0; }
     .hyrox-tabs { scrollbar-width: none; -ms-overflow-style: none; }
+    /* Each tab panel is its own layout/paint scope — switching display:none/block
+       on a heavy panel (Stats charts, Week grid, Log cards) won't invalidate the
+       whole document tree. Cuts the per-switch reflow cost dramatically. */
+    .hyrox-tab-panel { contain: layout style; }
   `;
   document.head.appendChild(style);
 }
@@ -3404,6 +3408,15 @@ export default function HyroxTracker() {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
   }, [tab]);
 
+  // Lazy-mount tabs on first visit. App boot only renders the initial tab; heavy
+  // panels (Stats charts, full Plan grid) don't pay their mount cost until the
+  // user actually opens them. After first visit they stay mounted and just
+  // toggle visibility, so switching back is instant.
+  const [visited, setVisited] = useState<Record<string, boolean>>(() => ({ [tab]: true }));
+  useEffect(() => {
+    setVisited(prev => prev[tab] ? prev : { ...prev, [tab]: true });
+  }, [tab]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -3526,15 +3539,17 @@ export default function HyroxTracker() {
       <InstallPrompt />
 
       <div style={{ padding: isCompact ? '0.875rem 0.875rem 3rem' : '1.25rem 1.75rem 4rem' }}>
-        {/* Tabs stay mounted and only toggle visibility — switching is instant after first paint, state survives, no recharts/plan recompute. */}
-        <div style={{ display: tab === 'dashboard' ? 'block' : 'none' }}><Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>
-        <div style={{ display: tab === 'race' ? 'block' : 'none' }}><RaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>
-        <div style={{ display: tab === 'friends' ? 'block' : 'none' }}><Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>
-        <div style={{ display: tab === 'myweek' ? 'block' : 'none' }}><MyWeek profile={profile} /></div>
-        <div style={{ display: tab === 'log' ? 'block' : 'none' }}><LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>
-        <div style={{ display: tab === 'progress' ? 'block' : 'none' }}><Progress workouts={workouts} pbs={pbs} /></div>
-        <div style={{ display: tab === 'plan' ? 'block' : 'none' }}><TrainingPlan profile={profile} workouts={workouts} /></div>
-        <div style={{ display: tab === 'profile' ? 'block' : 'none' }}><ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>
+        {/* Each panel mounts on first visit, then stays mounted and toggles
+            display. CSS containment (.hyrox-tab-panel) isolates its paint
+            scope so switching doesn't invalidate other panels' layout. */}
+        {visited.dashboard && <div className="hyrox-tab-panel" style={{ display: tab === 'dashboard' ? 'block' : 'none' }}><Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
+        {visited.race && <div className="hyrox-tab-panel" style={{ display: tab === 'race' ? 'block' : 'none' }}><RaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
+        {visited.friends && <div className="hyrox-tab-panel" style={{ display: tab === 'friends' ? 'block' : 'none' }}><Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
+        {visited.myweek && <div className="hyrox-tab-panel" style={{ display: tab === 'myweek' ? 'block' : 'none' }}><MyWeek profile={profile} /></div>}
+        {visited.log && <div className="hyrox-tab-panel" style={{ display: tab === 'log' ? 'block' : 'none' }}><LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
+        {visited.progress && <div className="hyrox-tab-panel" style={{ display: tab === 'progress' ? 'block' : 'none' }}><Progress workouts={workouts} pbs={pbs} /></div>}
+        {visited.plan && <div className="hyrox-tab-panel" style={{ display: tab === 'plan' ? 'block' : 'none' }}><TrainingPlan profile={profile} workouts={workouts} /></div>}
+        {visited.profile && <div className="hyrox-tab-panel" style={{ display: tab === 'profile' ? 'block' : 'none' }}><ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
       </div>
     </div>
   );
