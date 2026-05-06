@@ -137,10 +137,12 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     /* Hide scrollbar on the tab bar while keeping it scrollable on narrow widths */
     .hyrox-tabs::-webkit-scrollbar { display: none; height: 0; width: 0; }
     .hyrox-tabs { scrollbar-width: none; -ms-overflow-style: none; }
-    /* Each tab panel is its own layout/paint scope — switching display:none/block
-       on a heavy panel (Stats charts, Week grid, Log cards) won't invalidate the
-       whole document tree. Cuts the per-switch reflow cost dramatically. */
-    .hyrox-tab-panel { contain: layout style; }
+    /* Each tab panel is its own layout/paint scope. Horizontal padding lives
+       here (driven by --panel-pad-x set on the container) instead of on the
+       container itself: an absolute panel with left:0/right:0 fills its
+       parent's padding box, while a relative panel fills the content box —
+       the difference would reflow content by ~28px on every switch. */
+    .hyrox-tab-panel { contain: layout style; padding-inline: var(--panel-pad-x); }
   `;
   document.head.appendChild(style);
 }
@@ -3537,7 +3539,10 @@ export default function HyroxTracker() {
 
       <InstallPrompt />
 
-      <div style={{ position: 'relative', padding: isCompact ? '0.875rem 0.875rem 3rem' : '1.25rem 1.75rem 4rem' }}>
+      {/* Horizontal padding moved onto .hyrox-tab-panel via --panel-pad-x so
+          active (relative) and inactive (absolute, left:0/right:0) panels share
+          the same effective width and don't reflow content on switch. */}
+      <div style={{ position: 'relative', padding: isCompact ? '0.875rem 0 3rem' : '1.25rem 0 4rem', ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
         {/* Inactive panels stay mounted but go position:absolute + visibility:hidden,
             so their layout is preserved across switches (no display:none → block
             re-layout cost). The active panel is in flow and sets container height.
