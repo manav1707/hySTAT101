@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo, useDeferredValue } from "react";
+import { useState, useEffect, useRef, memo, useDeferredValue, useMemo } from "react";
 import type { CSSProperties } from "react";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from "recharts";
 import {
@@ -3361,6 +3361,15 @@ function generateSeedWorkouts() {
   return out;
 }
 
+// Memoized aliases for panels with no closure props — tab changes don't change
+// their (workouts/pbs/profile) refs, so they skip re-render entirely on switch.
+// The other panels (Dashboard/Friends/LogWorkout/ProfileView) take callback props
+// that aren't stable yet, so memoizing them is a no-op until those are useCallback'd.
+const MemoRaceDay = memo(RaceDay);
+const MemoMyWeek = memo(MyWeek);
+const MemoProgress = memo(Progress);
+const MemoTrainingPlan = memo(TrainingPlan);
+
 // Inactive tab panels are absolutely positioned over the container (out of flow)
 // with visibility:hidden — preserves their layout state for instant re-show, while
 // only the active panel contributes to container height.
@@ -3467,7 +3476,8 @@ export default function HyroxTracker() {
     setWorkouts([]); setProfile(null); setTab('dashboard');
   };
 
-  const pbs = computePBs(workouts);
+  // Stable ref while workouts unchanged so memoized panels can skip re-render on tab switch.
+  const pbs = useMemo(() => computePBs(workouts), [workouts]);
 
   if (loading) return <div style={{ fontFamily: FONT, padding: '3rem', color: t.textSec, textAlign: 'center', fontSize: 16, background: t.bg, minHeight: '100vh' }}>Loading...</div>;
 
@@ -3534,12 +3544,12 @@ export default function HyroxTracker() {
             Panels read `deferredTab` so React paints the tab-bar highlight first
             and yields the heavy panel swap to the next frame. */}
         {visited.dashboard && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'dashboard')}><Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
-        {visited.race && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'race')}><RaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
+        {visited.race && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'race')}><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
         {visited.friends && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'friends')}><Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
-        {visited.myweek && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'myweek')}><MyWeek profile={profile} /></div>}
+        {visited.myweek && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'myweek')}><MemoMyWeek profile={profile} /></div>}
         {visited.log && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'log')}><LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
-        {visited.progress && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'progress')}><Progress workouts={workouts} pbs={pbs} /></div>}
-        {visited.plan && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'plan')}><TrainingPlan profile={profile} workouts={workouts} /></div>}
+        {visited.progress && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'progress')}><MemoProgress workouts={workouts} pbs={pbs} /></div>}
+        {visited.plan && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'plan')}><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
         {visited.profile && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'profile')}><ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
       </div>
     </div>
