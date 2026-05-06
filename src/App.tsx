@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useRef, memo, useDeferredValue } from "react";
+import type { CSSProperties } from "react";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from "recharts";
 import {
   Flame, Dumbbell, Zap, Activity, AlertTriangle, Mic, Hand, BarChart3,
@@ -3360,8 +3361,20 @@ function generateSeedWorkouts() {
   return out;
 }
 
+// Inactive tab panels are absolutely positioned over the container (out of flow)
+// with visibility:hidden — preserves their layout state for instant re-show, while
+// only the active panel contributes to container height.
+function panelStyle(activeTab: string, id: string): CSSProperties {
+  return activeTab === id
+    ? { position: 'relative', visibility: 'visible' }
+    : { position: 'absolute', top: 0, left: 0, right: 0, visibility: 'hidden' };
+}
+
 export default function HyroxTracker() {
   const [tab, setTab] = useState('dashboard');
+  // Tab bar reads `tab` (instant highlight on tap); panels read `deferredTab`
+  // so the heavy panel swap yields to the tab-bar paint, not the other way around.
+  const deferredTab = useDeferredValue(tab);
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -3514,18 +3527,20 @@ export default function HyroxTracker() {
 
       <InstallPrompt />
 
-      <div style={{ padding: isCompact ? '0.875rem 0.875rem 3rem' : '1.25rem 1.75rem 4rem' }}>
-        {/* Each panel mounts on first visit, then stays mounted and toggles
-            display. CSS containment (.hyrox-tab-panel) isolates its paint
-            scope so switching doesn't invalidate other panels' layout. */}
-        {visited.dashboard && <div className="hyrox-tab-panel" style={{ display: tab === 'dashboard' ? 'block' : 'none' }}><Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
-        {visited.race && <div className="hyrox-tab-panel" style={{ display: tab === 'race' ? 'block' : 'none' }}><RaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
-        {visited.friends && <div className="hyrox-tab-panel" style={{ display: tab === 'friends' ? 'block' : 'none' }}><Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
-        {visited.myweek && <div className="hyrox-tab-panel" style={{ display: tab === 'myweek' ? 'block' : 'none' }}><MyWeek profile={profile} /></div>}
-        {visited.log && <div className="hyrox-tab-panel" style={{ display: tab === 'log' ? 'block' : 'none' }}><LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
-        {visited.progress && <div className="hyrox-tab-panel" style={{ display: tab === 'progress' ? 'block' : 'none' }}><Progress workouts={workouts} pbs={pbs} /></div>}
-        {visited.plan && <div className="hyrox-tab-panel" style={{ display: tab === 'plan' ? 'block' : 'none' }}><TrainingPlan profile={profile} workouts={workouts} /></div>}
-        {visited.profile && <div className="hyrox-tab-panel" style={{ display: tab === 'profile' ? 'block' : 'none' }}><ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
+      <div style={{ position: 'relative', padding: isCompact ? '0.875rem 0.875rem 3rem' : '1.25rem 1.75rem 4rem' }}>
+        {/* Inactive panels stay mounted but go position:absolute + visibility:hidden,
+            so their layout is preserved across switches (no display:none → block
+            re-layout cost). The active panel is in flow and sets container height.
+            Panels read `deferredTab` so React paints the tab-bar highlight first
+            and yields the heavy panel swap to the next frame. */}
+        {visited.dashboard && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'dashboard')}><Dashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
+        {visited.race && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'race')}><RaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
+        {visited.friends && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'friends')}><Friends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
+        {visited.myweek && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'myweek')}><MyWeek profile={profile} /></div>}
+        {visited.log && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'log')}><LogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
+        {visited.progress && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'progress')}><Progress workouts={workouts} pbs={pbs} /></div>}
+        {visited.plan && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'plan')}><TrainingPlan profile={profile} workouts={workouts} /></div>}
+        {visited.profile && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'profile')}><ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
       </div>
     </div>
   );
