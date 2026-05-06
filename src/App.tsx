@@ -3367,6 +3367,26 @@ function generateSeedWorkouts() {
   return out;
 }
 
+// Tinted stripes over the four safe-area insets so you can SEE where the
+// notch/home-indicator/landscape-cutouts actually sit. Visit ?safe-debug=1 to
+// enable — pink for top/bottom, cyan for left/right. Pure overlay, pointer-events
+// off so it doesn't interfere with taps.
+function SafeAreaDebug() {
+  if (typeof window === 'undefined') return null;
+  if (!new URLSearchParams(window.location.search).has('safe-debug')) return null;
+  const base: CSSProperties = { position: 'fixed', zIndex: 99999, pointerEvents: 'none' };
+  const v = 'rgba(236, 72, 153, 0.45)';   // pink for top/bottom
+  const h = 'rgba(34, 211, 238, 0.45)';   // cyan for left/right
+  return (
+    <>
+      <div style={{ ...base, top: 0, left: 0, right: 0, height: 'env(safe-area-inset-top)', background: v }} />
+      <div style={{ ...base, bottom: 0, left: 0, right: 0, height: 'env(safe-area-inset-bottom)', background: v }} />
+      <div style={{ ...base, top: 0, bottom: 0, left: 0, width: 'env(safe-area-inset-left)', background: h }} />
+      <div style={{ ...base, top: 0, bottom: 0, right: 0, width: 'env(safe-area-inset-right)', background: h }} />
+    </>
+  );
+}
+
 // Memoized aliases for panels with no closure props — tab changes don't change
 // their (workouts/pbs/profile) refs, so they skip re-render entirely on switch.
 // The other panels (Dashboard/Friends/LogWorkout/ProfileView) take callback props
@@ -3566,6 +3586,7 @@ export default function HyroxTracker() {
         {visited.plan && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'plan')}><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
         {visited.profile && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'profile')}><ProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
       </div>
+      <SafeAreaDebug />
     </div>
   );
 }
