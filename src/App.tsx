@@ -3492,7 +3492,10 @@ export default function HyroxTracker() {
         </div>
       </div>
 
-      <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, backdropFilter: t.glassBlur, borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 9 }}>
+      {/* No backdrop-filter on sticky tab bar — recomputing the blur on every
+          repaint underneath causes severe mobile stutter on tab switch. tabBg
+          is already opaque so dropping it has no visual cost here. */}
+      <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 9 }}>
         {TABS.map(tb => {
           const active = tab === tb.id;
           return (
