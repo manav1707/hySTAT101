@@ -42,6 +42,10 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     button {
       transition: transform 0.15s cubic-bezier(0.4,0,0.2,1), box-shadow 0.15s cubic-bezier(0.4,0,0.2,1), filter 0.15s !important;
       transform-origin: center;
+      /* Kill the iOS Safari 300ms tap delay and disable double-tap-to-zoom on
+         buttons — both register as a perceptible lag on tab/control taps. */
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
     button:not(:disabled):hover {
       transform: scale(1.03);
@@ -3501,8 +3505,11 @@ export default function HyroxTracker() {
   ];
 
   return (
-    <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: isCompact ? 14 : 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh' }}>
-      <div style={{ background: t.headerBg, padding: isCompact ? '16px 14px 14px' : '28px 26px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
+    <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: isCompact ? 14 : 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh', boxSizing: 'border-box', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+      {/* paddingTop adds env(safe-area-inset-top) so the header content sits
+          below the iOS notch / status bar (apple-mobile-web-app-status-bar-style
+          is black-translucent, so the app extends under the status bar). */}
+      <div style={{ background: t.headerBg, paddingTop: `calc(${isCompact ? 16 : 28}px + env(safe-area-inset-top))`, paddingRight: isCompact ? 14 : 26, paddingBottom: isCompact ? 14 : 24, paddingLeft: isCompact ? 14 : 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${ACC} 30%, ${ACC} 70%, transparent)`, opacity: 0.7 }} />
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 2 : 3, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3541,8 +3548,10 @@ export default function HyroxTracker() {
 
       {/* Horizontal padding moved onto .hyrox-tab-panel via --panel-pad-x so
           active (relative) and inactive (absolute, left:0/right:0) panels share
-          the same effective width and don't reflow content on switch. */}
-      <div style={{ position: 'relative', padding: isCompact ? '0.875rem 0 3rem' : '1.25rem 0 4rem', ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
+          the same effective width and don't reflow content on switch.
+          Bottom padding adds env(safe-area-inset-bottom) so content clears the
+          iOS home indicator. */}
+      <div style={{ position: 'relative', paddingTop: isCompact ? '0.875rem' : '1.25rem', paddingBottom: `calc(${isCompact ? '3rem' : '4rem'} + env(safe-area-inset-bottom))`, ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
         {/* Inactive panels stay mounted but go position:absolute + visibility:hidden,
             so their layout is preserved across switches (no display:none → block
             re-layout cost). The active panel is in flow and sets container height.
