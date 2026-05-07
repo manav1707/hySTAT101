@@ -1430,6 +1430,18 @@ function WorkoutSummary({ workout, compact }) {
           );
         })}
       </div>
+      {workout.extras?.length > 0 && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${t.border}` }}>
+          <div style={{ fontSize: 10, letterSpacing: 1.5, color: t.textSec, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Complementary ({workout.extras.length})</div>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {workout.extras.map((ex: any, i: number) => (
+              <div key={i} style={{ fontSize: 12, color: t.textMute, paddingLeft: 4, borderLeft: `2px dashed ${t.borderInput}` }}>
+                <span style={{ marginLeft: 8 }}>{ex.raw}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1709,7 +1721,7 @@ function PasteParser({ onImport, lbl, inp }) {
   const { t } = useTheme();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
-  const [parsed, setParsed] = useState([]);
+  const [parsed, setParsed] = useState<{ matched: any[]; unmatched: any[] }>({ matched: [], unmatched: [] });
   const [tried, setTried] = useState(false);
 
   const parsePastedExercises = (text) => {
@@ -1740,14 +1752,30 @@ function PasteParser({ onImport, lbl, inp }) {
       // Fallback: bare 'row' in a Hyrox context almost always means the erg.
       ['row', 'rowing_direct'],
     ];
-    const parsed = [];
+    const matched: any[] = [];
+    const unmatched: any[] = [];
     for (const line of lines) {
       const lower = line.toLowerCase();
       let match = null;
       for (const [kw, id] of keywords) {
         if (lower.includes(kw)) { match = EQUIV.find(e => e.id === id); if (match) break; }
       }
-      if (!match) continue;
+      if (!match) {
+        // Capture quick numeric hints so the workout still records *what* the
+        // user did, even if there's no Hyrox station to map it to.
+        const setsXreps = line.match(/(\d+)\s*[x×]\s*(\d+)/i);
+        const weight = line.match(/(\d+(?:\.\d+)?)\s*kg/i);
+        const distM = line.match(/(\d+(?:\.\d+)?)\s*m(?!in|\w)/i);
+        const distKm = line.match(/(\d+(?:\.\d+)?)\s*km/i);
+        unmatched.push({
+          raw: line,
+          sets: setsXreps ? parseInt(setsXreps[1]) : null,
+          reps: setsXreps ? parseInt(setsXreps[2]) : null,
+          weight: weight ? parseFloat(weight[1]) : null,
+          distance: distKm ? parseFloat(distKm[1]) * 1000 : (distM ? parseFloat(distM[1]) : null),
+        });
+        continue;
+      }
       const setsXreps = line.match(/(\d+)\s*[x×]\s*(\d+)/i);
       const weight = line.match(/(\d+(?:\.\d+)?)\s*kg/i);
       const distM = line.match(/(\d+(?:\.\d+)?)\s*m(?!in|\w)/i);
@@ -1765,9 +1793,9 @@ function PasteParser({ onImport, lbl, inp }) {
         if (distKm && f.k === 'distance') vals[f.k] = parseFloat(distKm[1]);
         if (level && f.k === 'level') vals[f.k] = parseInt(level[1]);
       }
-      parsed.push({ original: line, exId: match.id, name: match.name, station: match.station, match: match.match, inputs: vals, val: match.calc(vals) });
+      matched.push({ original: line, exId: match.id, name: match.name, station: match.station, match: match.match, inputs: vals, val: match.calc(vals) });
     }
-    return parsed;
+    return { matched, unmatched };
   };
 
   const handleClipboard = async () => {
@@ -1783,23 +1811,23 @@ function PasteParser({ onImport, lbl, inp }) {
     <div style={{ background: t.card, border: `2px solid ${ACC}`, borderRadius: 16, padding: 18, marginBottom: 16, boxShadow: '0 8px 24px rgba(232,69,27,0.1)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: ACC, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={Clipboard} size={14} color={ACC} /> IMPORT</div>
-        <button onClick={() => { setOpen(false); setText(''); setParsed([]); }} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 24, fontFamily: FONT }}>×</button>
+        <button onClick={() => { setOpen(false); setText(''); setParsed({ matched: [], unmatched: [] }); setTried(false); }} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 24, fontFamily: FONT }}>×</button>
       </div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 12, lineHeight: 1.5 }}>Paste your routine — we'll parse and translate.</div>
       <button onClick={handleClipboard} style={{ fontSize: 13, padding: '10px 16px', background: t.card, color: ACC, border: `1.5px solid ${ACC}`, borderRadius: 10, cursor: 'pointer', marginBottom: 10, fontWeight: 700, fontFamily: FONT, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Pin} size={13} color={ACC} /> PASTE FROM CLIPBOARD</button>
-      <textarea value={text} onChange={e => { setText(e.target.value); setTried(false); setParsed([]); }} placeholder={`Squats 3×8\nDB Thrusters 5×15\nFarmer's Carry 4×40m`} rows={5} style={{ ...inp, resize: 'vertical' }} />
+      <textarea value={text} onChange={e => { setText(e.target.value); setTried(false); setParsed({ matched: [], unmatched: [] }); }} placeholder={`Squats 3×8\nDB Thrusters 5×15\nFarmer's Carry 4×40m\nPull-ups 4×10`} rows={5} style={{ ...inp, resize: 'vertical' }} />
       {text && <button onClick={() => { setParsed(parsePastedExercises(text)); setTried(true); }} style={{ marginTop: 10, width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Zap} size={14} color="#fff" /> PARSE</button>}
-      {tried && parsed.length === 0 && (
+      {tried && parsed.matched.length === 0 && parsed.unmatched.length === 0 && (
         <div style={{ marginTop: 12, background: `${ACC}10`, border: `1px solid ${ACC}40`, borderRadius: 10, padding: '10px 12px', fontSize: 12, color: t.text, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <Icon C={AlertTriangle} size={13} color={ACC} />
-          <span>No exercises recognised. Try keywords like Wall Balls, Sled Push, Sled Pull, SkiErg, Rowing, Sandbag Lunges, Burpee BJ, Farmer's Carry, Thrusters, Deadlifts, Squats — followed by sets×reps, distance (e.g. <code>3×500m</code>) and weight (e.g. <code>9kg</code>).</span>
+          <span>Nothing to parse — paste a routine with at least one exercise per line.</span>
         </div>
       )}
-      {parsed.length > 0 && (
+      {parsed.matched.length > 0 && (
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: t.textSec, marginBottom: 10 }}>PARSED ({parsed.length})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: t.textSec, marginBottom: 10 }}>TRANSLATED → HYROX ({parsed.matched.length})</div>
           <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-            {parsed.map((p, i) => {
+            {parsed.matched.map((p, i) => {
               const meta = getStationMeta(p.station);
               const col = p.station === 'run' ? ACC : STATION_META[p.station]?.color;
               return (
@@ -1810,8 +1838,29 @@ function PasteParser({ onImport, lbl, inp }) {
               );
             })}
           </div>
-          <button onClick={() => { onImport(parsed); setText(''); setParsed([]); setOpen(false); }} style={{ width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.green, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Check} size={14} color="#fff" /> IMPORT ALL</button>
         </div>
+      )}
+      {parsed.unmatched.length > 0 && (
+        <div style={{ marginTop: parsed.matched.length > 0 ? 4 : 14, marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: t.textSec, marginBottom: 10 }}>COMPLEMENTARY ({parsed.unmatched.length}) <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· no Hyrox equivalent, recorded as-is</span></div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {parsed.unmatched.map((u, i) => (
+              <div key={i} style={{ background: t.surfaceAlt, borderRadius: 12, padding: '12px 14px', borderLeft: `4px dashed ${t.borderInput}` }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>{u.raw}</div>
+                {(u.sets || u.reps || u.weight || u.distance) && (
+                  <div style={{ fontSize: 11, color: t.textSec, marginTop: 3 }}>
+                    {u.sets != null && u.reps != null && `${u.sets}×${u.reps}`}
+                    {u.weight != null && ` · ${u.weight}kg`}
+                    {u.distance != null && ` · ${u.distance >= 1000 ? `${(u.distance / 1000).toFixed(1)}km` : `${u.distance}m`}`}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {(parsed.matched.length > 0 || parsed.unmatched.length > 0) && (
+        <button onClick={() => { onImport(parsed.matched, parsed.unmatched); setText(''); setParsed({ matched: [], unmatched: [] }); setTried(false); setOpen(false); }} style={{ width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.green, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Check} size={14} color="#fff" /> IMPORT ALL ({parsed.matched.length + parsed.unmatched.length})</button>
       )}
     </div>
   );
@@ -1896,7 +1945,7 @@ function DayExerciseCard({ raw, equiv, parsed, onAdd, t, inp, lbl, swap }: any) 
   );
 }
 
-function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
+function TranslateMode({ translated, setTranslated, extras, setExtras, inp, lbl, profile }: any) {
   const { t } = useTheme();
   const week = profile ? getCurrentWeekPlan(profile, new Date()) : null;
   const todayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
@@ -1904,10 +1953,11 @@ function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
 
   const onAdd = (item: any) => setTranslated([...translated, item]);
   const remove = (i: number) => setTranslated(translated.filter((_, idx) => idx !== i));
+  const removeExtra = (i: number) => setExtras(extras.filter((_: any, idx: number) => idx !== i));
 
   return (
     <div>
-      <PasteParser onImport={(items) => setTranslated([...translated, ...items])} lbl={lbl} inp={inp} />
+      <PasteParser onImport={(items: any[], extraItems: any[]) => { setTranslated([...translated, ...items]); setExtras([...extras, ...extraItems]); }} lbl={lbl} inp={inp} />
 
       {week && activeDay && (() => {
         const items = (activeDay.sessions || []).map((s: string) => {
@@ -1987,6 +2037,28 @@ function TranslateMode({ translated, setTranslated, inp, lbl, profile }: any) {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+      {extras?.length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>Complementary ({extras.length}) <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· logged but not scored</span></div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {extras.map((ex: any, i: number) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: t.card, border: `1px dashed ${t.borderInput}`, borderRadius: 14, padding: '12px 16px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{ex.raw}</div>
+                  {(ex.sets || ex.reps || ex.weight || ex.distance) && (
+                    <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>
+                      {ex.sets != null && ex.reps != null && `${ex.sets}×${ex.reps}`}
+                      {ex.weight != null && ` · ${ex.weight}kg`}
+                      {ex.distance != null && ` · ${ex.distance >= 1000 ? `${(ex.distance / 1000).toFixed(1)}km` : `${ex.distance}m`}`}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => removeExtra(i)} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 22, padding: 4, fontFamily: FONT }}>×</button>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -2593,6 +2665,7 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
   const [runPace, setRunPace] = useState('');
   const [runCount, setRunCount] = useState(0);
   const [translated, setTranslated] = useState([]);
+  const [extras, setExtras] = useState<any[]>([]);
   const [notes, setNotes] = useState('');
   const [memo, setMemo] = useState('');
   const [saved, setSaved] = useState(false);
@@ -2611,9 +2684,10 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
     }, {}),
     runs: runCount ? { count: runCount, pace: parseMMSS(runPace) } : null,
     translated,
+    extras,
   };
 
-  const hasAny = translated.length || Object.keys(stationData).some(k => stationData[k]?.time || stationData[k]?.weight) || runCount || memo.trim() || notes.trim();
+  const hasAny = translated.length || extras.length || Object.keys(stationData).some(k => stationData[k]?.time || stationData[k]?.weight) || runCount || memo.trim() || notes.trim();
 
   const handleSave = async () => {
     if (!hasAny) return;
@@ -2624,7 +2698,7 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
       setSaved(true);
       setInsightFor({ workout: entry, allWorkouts: newWorkouts });
       setTimeout(() => {
-        setSaved(false); setStationData({}); setTranslated([]); setNotes(''); setMemo(''); setRunPace(''); setRunCount(0);
+        setSaved(false); setStationData({}); setTranslated([]); setExtras([]); setNotes(''); setMemo(''); setRunPace(''); setRunCount(0);
       }, 2500);
     } catch (e) { console.error('Save failed:', e); }
   };
@@ -2665,7 +2739,7 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
       <div style={{ marginBottom: 16 }}><label style={lbl}>DATE</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
 
       {mode === 'translate'
-        ? <TranslateMode translated={translated} setTranslated={setTranslated} inp={inp} lbl={lbl} profile={profile} />
+        ? <TranslateMode translated={translated} setTranslated={setTranslated} extras={extras} setExtras={setExtras} inp={inp} lbl={lbl} profile={profile} />
         : <DirectMode stationData={stationData} setStation={setStation} runCount={runCount} setRunCount={setRunCount} runPace={runPace} setRunPace={setRunPace} inp={inp} lbl={lbl} />}
 
       {hasAny && (
