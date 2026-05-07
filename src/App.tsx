@@ -1710,6 +1710,7 @@ function PasteParser({ onImport, lbl, inp }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState('');
   const [parsed, setParsed] = useState([]);
+  const [tried, setTried] = useState(false);
 
   const parsePastedExercises = (text) => {
     const lines = text.split(/\n|→|,(?=\s*[A-Z])/g).map(l => l.trim()).filter(l => l.length > 3);
@@ -1786,8 +1787,14 @@ function PasteParser({ onImport, lbl, inp }) {
       </div>
       <div style={{ fontSize: 13, color: t.textSec, marginBottom: 12, lineHeight: 1.5 }}>Paste your routine — we'll parse and translate.</div>
       <button onClick={handleClipboard} style={{ fontSize: 13, padding: '10px 16px', background: t.card, color: ACC, border: `1.5px solid ${ACC}`, borderRadius: 10, cursor: 'pointer', marginBottom: 10, fontWeight: 700, fontFamily: FONT, display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Pin} size={13} color={ACC} /> PASTE FROM CLIPBOARD</button>
-      <textarea value={text} onChange={e => setText(e.target.value)} placeholder={`Squats 3×8\nDB Thrusters 5×15\nFarmer's Carry 4×40m`} rows={5} style={{ ...inp, resize: 'vertical' }} />
-      {text && <button onClick={() => setParsed(parsePastedExercises(text))} style={{ marginTop: 10, width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Zap} size={14} color="#fff" /> PARSE</button>}
+      <textarea value={text} onChange={e => { setText(e.target.value); setTried(false); setParsed([]); }} placeholder={`Squats 3×8\nDB Thrusters 5×15\nFarmer's Carry 4×40m`} rows={5} style={{ ...inp, resize: 'vertical' }} />
+      {text && <button onClick={() => { setParsed(parsePastedExercises(text)); setTried(true); }} style={{ marginTop: 10, width: '100%', padding: '14px', fontSize: 14, fontWeight: 700, background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon C={Zap} size={14} color="#fff" /> PARSE</button>}
+      {tried && parsed.length === 0 && (
+        <div style={{ marginTop: 12, background: `${ACC}10`, border: `1px solid ${ACC}40`, borderRadius: 10, padding: '10px 12px', fontSize: 12, color: t.text, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <Icon C={AlertTriangle} size={13} color={ACC} />
+          <span>No exercises recognised. Try keywords like Wall Balls, Sled Push, Sled Pull, SkiErg, Rowing, Sandbag Lunges, Burpee BJ, Farmer's Carry, Thrusters, Deadlifts, Squats — followed by sets×reps, distance (e.g. <code>3×500m</code>) and weight (e.g. <code>9kg</code>).</span>
+        </div>
+      )}
       {parsed.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: t.textSec, marginBottom: 10 }}>PARSED ({parsed.length})</div>
@@ -3420,15 +3427,6 @@ const MemoProgress = memo(Progress);
 const MemoTrainingPlan = memo(TrainingPlan);
 const MemoProfileView = memo(ProfileView);
 
-// Inactive tab panels are absolutely positioned over the container (out of flow)
-// with visibility:hidden — preserves their layout state for instant re-show, while
-// only the active panel contributes to container height.
-function panelStyle(activeTab: string, id: string): CSSProperties {
-  return activeTab === id
-    ? { position: 'relative', visibility: 'visible' }
-    : { position: 'absolute', top: 0, left: 0, right: 0, visibility: 'hidden' };
-}
-
 export default function HyroxTracker() {
   const [tab, setTab] = useState('dashboard');
   const [workouts, setWorkouts] = useState<any[]>([]);
@@ -3460,15 +3458,6 @@ export default function HyroxTracker() {
   // scroll Y leaking into a shorter tab and feeling like a layout jump.
   useEffect(() => {
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [tab]);
-
-  // Lazy-mount tabs on first visit. App boot only renders the initial tab; heavy
-  // panels (Stats charts, full Plan grid) don't pay their mount cost until the
-  // user actually opens them. After first visit they stay mounted and just
-  // toggle visibility, so switching back is instant.
-  const [visited, setVisited] = useState<Record<string, boolean>>(() => ({ [tab]: true }));
-  useEffect(() => {
-    setVisited(prev => prev[tab] ? prev : { ...prev, [tab]: true });
   }, [tab]);
 
   useEffect(() => {
@@ -3602,26 +3591,21 @@ export default function HyroxTracker() {
 
       <InstallPrompt />
 
-      {/* Horizontal padding moved onto .hyrox-tab-panel via --panel-pad-x so
-          active (relative) and inactive (absolute, left:0/right:0) panels share
-          the same effective width and don't reflow content on switch.
-          Bottom padding adds env(safe-area-inset-bottom) so content clears the
-          iOS home indicator. */}
-      <div style={{ position: 'relative', paddingTop: isCompact ? '0.875rem' : '1.25rem', paddingBottom: `calc(${isCompact ? '3rem' : '4rem'} + env(safe-area-inset-bottom))`, ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
-        {/* Inactive panels stay mounted but go position:absolute + visibility:hidden,
-            so their layout is preserved across switches (no display:none → block
-            re-layout cost). The active panel is in flow and sets container height.
-            Tab bar and panels both read `tab` so the highlight + content swap
-            land in one frame — splitting them via useDeferredValue made heavy
-            panels feel "staggered" vs the snap of light ones (Week, Log). */}
-        {visited.dashboard && <div className="hyrox-tab-panel" style={panelStyle(tab, 'dashboard')}><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
-        {visited.race && <div className="hyrox-tab-panel" style={panelStyle(tab, 'race')}><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
-        {visited.friends && <div className="hyrox-tab-panel" style={panelStyle(tab, 'friends')}><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
-        {visited.myweek && <div className="hyrox-tab-panel" style={panelStyle(tab, 'myweek')}><MemoMyWeek profile={profile} /></div>}
-        {visited.log && <div className="hyrox-tab-panel" style={panelStyle(tab, 'log')}><MemoLogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
-        {visited.progress && <div className="hyrox-tab-panel" style={panelStyle(tab, 'progress')}><MemoProgress workouts={workouts} pbs={pbs} /></div>}
-        {visited.plan && <div className="hyrox-tab-panel" style={panelStyle(tab, 'plan')}><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
-        {visited.profile && <div className="hyrox-tab-panel" style={panelStyle(tab, 'profile')}><MemoProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
+      {/* Conditional render: only the active panel exists in the DOM. Switching
+          unmounts the previous panel and mounts the new one, so each tab's
+          layout starts fresh — no stacked-panel layout drift, no visibility
+          hacks. Trade-off: in-progress form state on Log resets if the user
+          navigates away mid-entry; recharts is a separate chunk so the Stats
+          remount stays cheap. */}
+      <div style={{ paddingTop: isCompact ? '0.875rem' : '1.25rem', paddingBottom: `calc(${isCompact ? '3rem' : '4rem'} + env(safe-area-inset-bottom))`, ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
+        {tab === 'dashboard' && <div className="hyrox-tab-panel"><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
+        {tab === 'race' && <div className="hyrox-tab-panel"><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
+        {tab === 'friends' && <div className="hyrox-tab-panel"><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
+        {tab === 'myweek' && <div className="hyrox-tab-panel"><MemoMyWeek profile={profile} /></div>}
+        {tab === 'log' && <div className="hyrox-tab-panel"><MemoLogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
+        {tab === 'progress' && <div className="hyrox-tab-panel"><MemoProgress workouts={workouts} pbs={pbs} /></div>}
+        {tab === 'plan' && <div className="hyrox-tab-panel"><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
+        {tab === 'profile' && <div className="hyrox-tab-panel"><MemoProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
       </div>
       <SafeAreaDebug />
     </div>
