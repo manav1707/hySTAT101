@@ -62,8 +62,11 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
+  /* Stop scroll chaining + iOS rubber-band overscroll past the app's
+     top/bottom — keeps scroll contained inside the app surface. */
+  overscroll-behavior: none;
 }
 
 h1,
