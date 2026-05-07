@@ -1209,11 +1209,44 @@ const ProfileForm = memo(function ProfileForm({ initial, onSave, isOnboarding }:
   );
 });
 
-function ProfileView({ profile, onSave, onClearData }) {
+function ProfileView({ profile, workouts, onSave, onClearData, onReplaceData }: any) {
   const { t } = useTheme();
   const [editing, setEditing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  if (editing) return <ProfileForm initial={profile} onSave={(p) => { onSave(p); setEditing(false); }} />;
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState('');
+  const [importedOk, setImportedOk] = useState(false);
+  if (editing) return <ProfileForm initial={profile} onSave={(p: any) => { onSave(p); setEditing(false); }} />;
+
+  const exportData = () => {
+    try {
+      const data = { version: 1, exportedAt: new Date().toISOString(), workouts: workouts || [], profile };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hyrox-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error('Export failed:', e); }
+  };
+
+  const doImport = async () => {
+    setImportError('');
+    let data: any;
+    try { data = JSON.parse(importText); }
+    catch { setImportError('Could not parse JSON. Make sure you pasted the full file.'); return; }
+    if (!data || (!Array.isArray(data.workouts) && typeof data.profile !== 'object')) {
+      setImportError('Backup must include a workouts array or profile object.'); return;
+    }
+    await onReplaceData?.({ workouts: data.workouts, profile: data.profile });
+    setImportedOk(true);
+    setImportText('');
+    setTimeout(() => { setImportOpen(false); setImportedOk(false); }, 1500);
+  };
 
   const ageCategory = profile.age < 30 ? 'Open' : profile.age < 40 ? '30-39' : profile.age < 50 ? '40-49' : '50+';
   const eventDays = Math.max(0, Math.floor((new Date(profile.eventDate).getTime() - new Date().getTime()) / 86400000));
@@ -1286,6 +1319,23 @@ function ProfileView({ profile, onSave, onClearData }) {
           <div style={{ fontSize: 13, lineHeight: 1.5, opacity: 0.95 }}>Prioritize sleep (7-9hrs), front-load calories, and consider a second recovery day.</div>
         </div>
       )}
+
+      <div style={{ background: t.card, borderRadius: 18, padding: '6px 20px 16px', marginBottom: 14, boxShadow: t.cardShadow, border: `1px solid ${t.border}` }}>
+        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: t.textSec, padding: '16px 0 8px', textTransform: 'uppercase' }}>Data</div>
+        <div style={{ fontSize: 13, color: t.textSec, marginBottom: 12, lineHeight: 1.5 }}>Backup your workouts + profile to a JSON file. Restore on a new device by importing it.</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={exportData} style={{ flex: 1, padding: '12px', fontSize: 13, fontWeight: 700, background: t.surfaceAlt, color: t.text, border: `1px solid ${t.border}`, borderRadius: 10, cursor: 'pointer', fontFamily: FONT }}>EXPORT JSON</button>
+          <button onClick={() => { setImportOpen(o => !o); setImportError(''); }} style={{ flex: 1, padding: '12px', fontSize: 13, fontWeight: 700, background: t.surfaceAlt, color: t.text, border: `1px solid ${t.border}`, borderRadius: 10, cursor: 'pointer', fontFamily: FONT }}>{importOpen ? 'CANCEL' : 'IMPORT'}</button>
+        </div>
+        {importOpen && (
+          <div style={{ marginTop: 12 }}>
+            <textarea value={importText} onChange={e => { setImportText(e.target.value); setImportError(''); }} placeholder="Paste backup JSON here..." rows={5} style={{ width: '100%', padding: '12px', fontSize: 12, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box', fontFamily: 'SF Mono, Monaco, monospace', resize: 'vertical' }} />
+            {importError && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {importError}</div>}
+            <button disabled={!importText.trim() || importedOk} onClick={doImport} style={{ width: '100%', marginTop: 10, padding: '12px', fontSize: 13, fontWeight: 700, background: importedOk ? GRAD.green : !importText.trim() ? t.borderInput : GRAD.orange, color: '#fff', border: 'none', borderRadius: 10, cursor: !importText.trim() ? 'not-allowed' : 'pointer', fontFamily: FONT, opacity: !importText.trim() ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>{importedOk ? <><Icon C={Check} size={13} color="#fff" /> IMPORTED</> : 'REPLACE LOCAL DATA'}</button>
+            <div style={{ fontSize: 11, color: t.textSec, marginTop: 8, lineHeight: 1.4 }}>This overwrites your current workouts and profile. Export first if you're unsure.</div>
+          </div>
+        )}
+      </div>
 
       <button onClick={() => setEditing(true)} style={{ width: '100%', padding: '16px', fontSize: 15, fontWeight: 700, background: t.card, color: ACC, border: `2px solid ${ACC}`, borderRadius: 14, cursor: 'pointer', fontFamily: FONT, marginBottom: 10 }}>EDIT PROFILE</button>
       {onClearData && !confirmClear && (
@@ -1446,8 +1496,10 @@ function WorkoutSummary({ workout, compact }) {
   );
 }
 
-function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
+function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout }) {
   const { t } = useTheme();
+  const [editing, setEditing] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const weekAgo = new Date(Date.now() - 7 * 86400000);
   const thisWeek = workouts.filter(w => new Date(w.date) >= weekAgo).length;
   const lastWorkout = workouts.length ? workouts[workouts.length - 1] : null;
@@ -1508,7 +1560,27 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
         <div style={{ marginBottom: 28 }}>
           <SectionTitle accent={ACC}>Last Workout</SectionTitle>
           <WorkoutSummary workout={lastWorkout} compact />
+          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            <button onClick={() => setEditing(lastWorkout)} style={{ flex: 1, padding: '11px', fontSize: 13, fontWeight: 700, background: t.surfaceAlt, color: t.text, border: `1px solid ${t.border}`, borderRadius: 10, cursor: 'pointer', fontFamily: FONT, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>EDIT</button>
+            <button onClick={() => setConfirmDelete(true)} style={{ flex: 1, padding: '11px', fontSize: 13, fontWeight: 700, background: 'transparent', color: '#DC2626', border: `1px solid #DC262640`, borderRadius: 10, cursor: 'pointer', fontFamily: FONT, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Icon C={Trash2} size={13} color="#DC2626" /> DELETE</button>
+          </div>
+          {confirmDelete && (
+            <div style={{ marginTop: 10, background: '#FEE2E2', border: '1.5px solid #DC2626', borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 13, color: '#991B1B', fontWeight: 700, marginBottom: 10 }}>Delete this workout? This can't be undone.</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 700, background: '#fff', color: '#000', border: '1px solid #D1D1D6', borderRadius: 8, cursor: 'pointer', fontFamily: FONT }}>Cancel</button>
+                <button onClick={async () => { await deleteWorkout(lastWorkout.id); setConfirmDelete(false); }} style={{ flex: 1, padding: '10px', fontSize: 13, fontWeight: 700, background: '#DC2626', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: FONT }}>Yes, delete</button>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+      {editing && (
+        <EditWorkoutSheet
+          workout={editing}
+          onClose={() => setEditing(null)}
+          onSave={async (updated: any) => { await editWorkout(updated); setEditing(null); }}
+        />
       )}
 
       <div style={{ marginBottom: 28 }}>
@@ -2666,6 +2738,130 @@ function StravaImport({ onImport }: any) {
   );
 }
 
+function EditWorkoutSheet({ workout, onSave, onClose }: any) {
+  const { t } = useTheme();
+  const [date, setDate] = useState(workout.date);
+  const [stations, setStations] = useState<any>(() => {
+    const out: any = {};
+    Object.entries(workout.stations || {}).forEach(([id, s]: any) => {
+      out[id] = { time: s?.time != null ? fmtTime(s.time) : '', weight: s?.weight != null ? String(s.weight) : '' };
+    });
+    return out;
+  });
+  const [translated, setTranslated] = useState<any[]>(workout.translated || []);
+  const [extras, setExtras] = useState<any[]>(workout.extras || []);
+  const [notes, setNotes] = useState(workout.notes || '');
+
+  const inp: any = { width: '100%', padding: '11px 13px', fontSize: 14, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box', fontFamily: FONT };
+  const lbl: any = { fontSize: 11, color: t.textSec, marginBottom: 6, display: 'block', fontWeight: 700, letterSpacing: 0.4 };
+
+  const stationIds = Object.keys(stations);
+  const setStationField = (id: string, field: string, val: string) =>
+    setStations((prev: any) => ({ ...prev, [id]: { ...prev[id], [field]: val } }));
+  const removeStation = (id: string) =>
+    setStations((prev: any) => { const next = { ...prev }; delete next[id]; return next; });
+  const removeTranslated = (i: number) => setTranslated(arr => arr.filter((_, idx) => idx !== i));
+  const removeExtra = (i: number) => setExtras(arr => arr.filter((_, idx) => idx !== i));
+
+  const save = () => {
+    const stationsOut: any = {};
+    Object.entries(stations).forEach(([id, s]: any) => {
+      const time = parseMMSS(s.time);
+      const weight = s.weight ? parseFloat(s.weight) : null;
+      if (time || weight != null) stationsOut[id] = { time: time || null, weight };
+    });
+    onSave({ ...workout, date, stations: stationsOut, translated, extras, notes });
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }} onClick={onClose}>
+      <div style={{ background: t.bg, color: t.text, borderRadius: 18, padding: 22, maxWidth: 520, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: t.text, letterSpacing: -0.3 }}>Edit Workout</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.textSec, fontSize: 24, cursor: 'pointer', fontFamily: FONT, padding: 4 }}>×</button>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>DATE</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} />
+        </div>
+
+        {stationIds.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={lbl}>STATIONS</div>
+            <div style={{ display: 'grid', gap: 10 }}>
+              {stationIds.map(id => {
+                const meta = getStationMeta(id);
+                return (
+                  <div key={id} style={{ background: t.surfaceAlt, borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{meta.name}</div>
+                      <button onClick={() => removeStation(id)} aria-label={`Remove ${meta.name}`} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 18, fontFamily: FONT, padding: 0 }}>×</button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: meta.hasWeight ? '1fr 1fr' : '1fr', gap: 8 }}>
+                      <div>
+                        <label style={lbl}>TIME (M:SS)</label>
+                        <input type="text" placeholder="m:ss" value={stations[id].time} onChange={e => setStationField(id, 'time', e.target.value)} style={inp} />
+                      </div>
+                      {meta.hasWeight && (
+                        <div>
+                          <label style={lbl}>WEIGHT (KG)</label>
+                          <input type="number" placeholder="kg" value={stations[id].weight} onChange={e => setStationField(id, 'weight', e.target.value)} style={inp} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {translated.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={lbl}>TRANSLATED ({translated.length})</div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {translated.map((tx: any, i: number) => {
+                const m = getStationMeta(tx.station);
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: t.surfaceAlt, borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ flex: 1, fontSize: 13, color: t.text }}>{tx.name} <span style={{ color: t.textSec, fontSize: 11 }}>→ {tx.val} {m.unit} {m.abbr}</span></div>
+                    <button onClick={() => removeTranslated(i)} aria-label="Remove" style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 20, fontFamily: FONT, padding: 0 }}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {extras.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={lbl}>COMPLEMENTARY ({extras.length})</div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {extras.map((ex: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: t.surfaceAlt, borderRadius: 10, padding: '10px 12px', border: `1px dashed ${t.borderInput}` }}>
+                  <div style={{ flex: 1, fontSize: 13, color: t.text }}>{ex.raw}</div>
+                  <button onClick={() => removeExtra(i)} aria-label="Remove" style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 20, fontFamily: FONT, padding: 0 }}>×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 18 }}>
+          <label style={lbl}>NOTES</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={{ ...inp, resize: 'vertical' }} />
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '13px', fontSize: 14, fontWeight: 700, background: 'transparent', color: t.textSec, border: `1px solid ${t.border}`, borderRadius: 10, cursor: 'pointer', fontFamily: FONT }}>Cancel</button>
+          <button onClick={save} style={{ flex: 2, padding: '13px', fontSize: 14, fontWeight: 800, background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3, boxShadow: '0 6px 16px rgba(0,0,0,0.25)' }}>SAVE CHANGES</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
   const { t } = useTheme();
   const today = new Date().toISOString().split('T')[0];
@@ -3596,6 +3792,25 @@ export default function HyroxTracker() {
     const updated = workouts.filter(w => w.id !== id);
     await saveWorkouts(updated);
   }, [workouts, saveWorkouts]);
+  const editWorkout = useCallback(async (updated: any) => {
+    const next = workouts.map(w => w.id === updated.id ? updated : w);
+    await saveWorkouts(next);
+  }, [workouts, saveWorkouts]);
+  const replaceData = useCallback(async (data: { workouts?: any[]; profile?: any }) => {
+    let nextProfile = profile;
+    let nextWorkouts = workouts;
+    if (Array.isArray(data.workouts)) {
+      nextWorkouts = data.workouts;
+      setWorkouts(nextWorkouts);
+      try { await window.storage.set('hyrox_workouts_v3', JSON.stringify(nextWorkouts)); } catch (e) {}
+    }
+    if (data.profile && typeof data.profile === 'object') {
+      nextProfile = { ...data.profile, userId: data.profile.userId || profile?.userId || genUserId() };
+      setProfile(nextProfile);
+      try { await window.storage.set('hyrox_profile_v2', JSON.stringify(nextProfile)); } catch (e) {}
+    }
+    if (nextProfile) syncPublic(nextProfile, nextWorkouts);
+  }, [profile, workouts, syncPublic]);
   const saveProfile = useCallback(async (p) => {
     const toSave = { ...p, userId: p.userId || genUserId() };
     setProfile(toSave);
@@ -3682,14 +3897,14 @@ export default function HyroxTracker() {
           navigates away mid-entry; recharts is a separate chunk so the Stats
           remount stays cheap. */}
       <div style={{ paddingTop: isCompact ? '0.875rem' : '1.25rem', paddingBottom: `calc(${isCompact ? '3rem' : '4rem'} + env(safe-area-inset-bottom))`, ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
-        {tab === 'dashboard' && <div className="hyrox-tab-panel"><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
+        {tab === 'dashboard' && <div className="hyrox-tab-panel"><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} editWorkout={editWorkout} deleteWorkout={deleteWorkout} /></div>}
         {tab === 'race' && <div className="hyrox-tab-panel"><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
         {tab === 'friends' && <div className="hyrox-tab-panel"><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
         {tab === 'myweek' && <div className="hyrox-tab-panel"><MemoMyWeek profile={profile} /></div>}
         {tab === 'log' && <div className="hyrox-tab-panel"><MemoLogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
         {tab === 'progress' && <div className="hyrox-tab-panel"><MemoProgress workouts={workouts} pbs={pbs} /></div>}
         {tab === 'plan' && <div className="hyrox-tab-panel"><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
-        {tab === 'profile' && <div className="hyrox-tab-panel"><MemoProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
+        {tab === 'profile' && <div className="hyrox-tab-panel"><MemoProfileView profile={profile} workouts={workouts} onSave={saveProfile} onClearData={clearAllData} onReplaceData={replaceData} /></div>}
       </div>
       <SafeAreaDebug />
     </div>
