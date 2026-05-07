@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo, useDeferredValue, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, memo, useMemo, useCallback } from "react";
 import type { CSSProperties } from "react";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, AreaChart, Area } from "recharts";
 import {
@@ -141,12 +141,14 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     /* Hide scrollbar on the tab bar while keeping it scrollable on narrow widths */
     .hyrox-tabs::-webkit-scrollbar { display: none; height: 0; width: 0; }
     .hyrox-tabs { scrollbar-width: none; -ms-overflow-style: none; }
-    /* Each tab panel is its own layout/paint scope. Horizontal padding lives
-       here (driven by --panel-pad-x set on the container) instead of on the
-       container itself: an absolute panel with left:0/right:0 fills its
-       parent's padding box, while a relative panel fills the content box —
-       the difference would reflow content by ~28px on every switch. */
-    .hyrox-tab-panel { contain: layout style; padding-inline: var(--panel-pad-x); }
+    /* Each tab panel is its own layout/paint scope. contain:paint lets the
+       browser treat each panel as an isolated paint boundary (often promoting
+       it to a GPU layer), so flipping visibility is a composite-only step
+       instead of a repaint of heavy DOM (Stats charts, Plan grid). Horizontal
+       padding lives here (driven by --panel-pad-x set on the container) so
+       active (relative, content-box) and inactive (absolute, padding-box)
+       panels share an effective width and don't reflow content on switch. */
+    .hyrox-tab-panel { contain: layout style paint; padding-inline: var(--panel-pad-x); }
   `;
   document.head.appendChild(style);
 }
@@ -3410,9 +3412,6 @@ function panelStyle(activeTab: string, id: string): CSSProperties {
 
 export default function HyroxTracker() {
   const [tab, setTab] = useState('dashboard');
-  // Tab bar reads `tab` (instant highlight on tap); panels read `deferredTab`
-  // so the heavy panel swap yields to the tab-bar paint, not the other way around.
-  const deferredTab = useDeferredValue(tab);
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -3581,16 +3580,17 @@ export default function HyroxTracker() {
         {/* Inactive panels stay mounted but go position:absolute + visibility:hidden,
             so their layout is preserved across switches (no display:none → block
             re-layout cost). The active panel is in flow and sets container height.
-            Panels read `deferredTab` so React paints the tab-bar highlight first
-            and yields the heavy panel swap to the next frame. */}
-        {visited.dashboard && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'dashboard')}><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
-        {visited.race && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'race')}><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
-        {visited.friends && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'friends')}><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
-        {visited.myweek && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'myweek')}><MemoMyWeek profile={profile} /></div>}
-        {visited.log && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'log')}><MemoLogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
-        {visited.progress && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'progress')}><MemoProgress workouts={workouts} pbs={pbs} /></div>}
-        {visited.plan && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'plan')}><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
-        {visited.profile && <div className="hyrox-tab-panel" style={panelStyle(deferredTab, 'profile')}><MemoProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
+            Tab bar and panels both read `tab` so the highlight + content swap
+            land in one frame — splitting them via useDeferredValue made heavy
+            panels feel "staggered" vs the snap of light ones (Week, Log). */}
+        {visited.dashboard && <div className="hyrox-tab-panel" style={panelStyle(tab, 'dashboard')}><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} deleteWorkout={deleteWorkout} /></div>}
+        {visited.race && <div className="hyrox-tab-panel" style={panelStyle(tab, 'race')}><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
+        {visited.friends && <div className="hyrox-tab-panel" style={panelStyle(tab, 'friends')}><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
+        {visited.myweek && <div className="hyrox-tab-panel" style={panelStyle(tab, 'myweek')}><MemoMyWeek profile={profile} /></div>}
+        {visited.log && <div className="hyrox-tab-panel" style={panelStyle(tab, 'log')}><MemoLogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
+        {visited.progress && <div className="hyrox-tab-panel" style={panelStyle(tab, 'progress')}><MemoProgress workouts={workouts} pbs={pbs} /></div>}
+        {visited.plan && <div className="hyrox-tab-panel" style={panelStyle(tab, 'plan')}><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
+        {visited.profile && <div className="hyrox-tab-panel" style={panelStyle(tab, 'profile')}><MemoProfileView profile={profile} onSave={saveProfile} onClearData={clearAllData} /></div>}
       </div>
       <SafeAreaDebug />
     </div>
