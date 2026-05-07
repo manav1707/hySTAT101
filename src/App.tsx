@@ -1673,7 +1673,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
           <div style={{ fontSize: 13, color: t.textSec, marginBottom: 12 }}>Enter your friend's 6-character Athlete ID:</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
-              style={{ flex: 1, padding: '16px', fontSize: 20, fontWeight: 700, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, textAlign: 'center', textTransform: 'uppercase' }} />
+              style={{ flex: 1, minWidth: 0, padding: '16px', fontSize: 20, fontWeight: 700, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, textAlign: 'center', textTransform: 'uppercase' }} />
             <button onClick={addFriend} disabled={adding || !addId} style={{
               padding: '16px 24px', fontSize: 14, fontWeight: 700,
               background: adding || !addId ? t.borderInput : GRAD.orange, color: '#fff', border: 'none', borderRadius: 12,
@@ -3542,7 +3542,7 @@ export default function HyroxTracker() {
   ];
 
   return (
-    <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: isCompact ? 14 : 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh', boxSizing: 'border-box', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
+    <div style={{ fontFamily: FONT, maxWidth: 680, margin: '0 auto', fontSize: isCompact ? 14 : 15, lineHeight: 1.55, letterSpacing: '0.005em', color: t.text, background: t.bg, minHeight: '100vh', boxSizing: 'border-box', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)', overflowX: 'clip' }}>
       {/* paddingTop adds env(safe-area-inset-top) so the header content sits
           below the iOS notch / status bar (apple-mobile-web-app-status-bar-style
           is black-translucent, so the app extends under the status bar). */}
