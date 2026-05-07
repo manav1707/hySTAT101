@@ -2808,7 +2808,7 @@ function Progress({ workouts, pbs }) {
                   <YAxis tickFormatter={fmtTime} tick={{ fontSize: 11, fill: t.textSec }} width={44} />
                   <Tooltip content={<Tip />} />
                   {pb && <ReferenceLine y={pb.time} stroke={ACC} strokeDasharray="4 2" label={{ value: 'PB', fill: ACC, fontSize: 11, fontWeight: 700 }} />}
-                  <Area type="monotone" dataKey="time" stroke={station.color} strokeWidth={3} fill="url(#chartGrad)" dot={{ fill: station.color, r: 5 }} activeDot={{ r: 7 }} />
+                  <Area type="monotone" dataKey="time" stroke={station.color} strokeWidth={3} fill="url(#chartGrad)" dot={{ fill: station.color, r: 5 }} activeDot={{ r: 7 }} isAnimationActive={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
