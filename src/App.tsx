@@ -3420,9 +3420,21 @@ export default function HyroxTracker() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const onResize = () => setIsCompact(window.innerWidth < 480);
+    // Coalesce bursts of resize events (iOS chrome reveal/hide fires dozens per
+    // gesture) into one rAF — setIsCompact dedupes if the boolean is unchanged.
+    let rafId: number | null = null;
+    const onResize = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        setIsCompact(window.innerWidth < 480);
+      });
+    };
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // Snap back to top of the new section on tab switch — avoids the previous tab's
