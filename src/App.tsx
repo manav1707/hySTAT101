@@ -1760,6 +1760,13 @@ function PasteParser({ onImport, lbl, inp }) {
       for (const [kw, id] of keywords) {
         if (lower.includes(kw)) { match = EQUIV.find(e => e.id === id); if (match) break; }
       }
+      // Whole-word run detection: 'Run 5km', 'Running 8km', 'Long run 6km', '4×1km Run'.
+      // \brun\b avoids false positives in 'truncate', 'crunches', etc.
+      // If a NxM pattern is present, treat as 1km intervals; otherwise long run.
+      if (!match && /\brun(?:ning|s)?\b/.test(lower)) {
+        const isInterval = /\d+\s*[x×]\s*\d+/i.test(lower);
+        match = EQUIV.find(e => e.id === (isInterval ? 'intervals' : 'longrun'));
+      }
       if (!match) {
         // Capture quick numeric hints so the workout still records *what* the
         // user did, even if there's no Hyrox station to map it to.
@@ -1782,11 +1789,14 @@ function PasteParser({ onImport, lbl, inp }) {
       const distKm = line.match(/(\d+(?:\.\d+)?)\s*km/i);
       const level = line.match(/(?:lvl|level)\s*(\d+)/i);
       const vals = {};
+      // For matches with no 'sets' field (intervals: reps-only run count), the
+      // first number of an NxM pair is the rep count, not the second.
+      const hasSets = match.fields.some((f: any) => f.k === 'sets');
       for (const f of match.fields) {
         vals[f.k] = f.d;
         if (setsXreps) {
           if (f.k === 'sets') vals[f.k] = parseInt(setsXreps[1]);
-          if (f.k === 'reps') vals[f.k] = parseInt(setsXreps[2]);
+          if (f.k === 'reps') vals[f.k] = parseInt(hasSets ? setsXreps[2] : setsXreps[1]);
         }
         if (weight && f.k === 'weight') vals[f.k] = parseFloat(weight[1]);
         if (distM && f.k === 'distance' && !distKm) vals[f.k] = parseFloat(distM[1]);
