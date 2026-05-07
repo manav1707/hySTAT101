@@ -1228,7 +1228,7 @@ function ProfileView({ profile, onSave, onClearData }) {
   return (
     <div>
       <div style={{
-        background: GRAD.darkHero, color: '#fff', borderRadius: 22, padding: '26px 26px', marginBottom: 20,
+        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 18,
         position: 'relative', overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
       }}>
         <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.3 }} />
@@ -1448,7 +1448,7 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 15, color: t.text, marginBottom: 6, fontWeight: 700, letterSpacing: '-0.01em' }}>{greeting},</div>
         <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 10 }}>{firstName} <Icon C={Hand} size={26} color={t.text} className="anim-wave" /></div>
         <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
@@ -1459,7 +1459,7 @@ function Dashboard({ workouts, pbs, setTab, profile, deleteWorkout }) {
 
       {/* HERO SCORE CARD */}
       <div style={{
-        background: GRAD.darkHero, color: '#fff', borderRadius: 24, padding: '28px 28px', marginBottom: 28,
+        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 18,
         position: 'relative', overflow: 'hidden', boxShadow: t.heroShadow,
       }}>
         <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.5 }} />
@@ -1608,7 +1608,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
   return (
     <div>
       <div style={{
-        background: GRAD.darkHero, color: '#fff', borderRadius: 24, padding: '26px 28px', marginBottom: 22,
+        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 18,
         position: 'relative', overflow: 'hidden', boxShadow: t.heroShadow,
       }}>
         <div style={{ position: 'absolute', top: -50, right: -50, width: 220, height: 220, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(70px)', opacity: 0.4 }} />
@@ -2927,8 +2927,8 @@ function TrainingPlan({ profile, workouts = [] }: any) {
     <div>
       {/* === SMART TAPER STATUS === */}
       <div style={{
-        background: t.card, border: `2px solid ${urgencyColor}`, borderRadius: 20,
-        padding: '20px 22px', marginBottom: 18, position: 'relative', overflow: 'hidden',
+        background: t.card, border: `2px solid ${urgencyColor}`, borderRadius: 16,
+        padding: '18px 20px', marginBottom: 18, position: 'relative', overflow: 'hidden',
         boxShadow: `0 8px 24px ${urgencyColor}25`,
       }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: urgencyColor }} />
@@ -2979,7 +2979,7 @@ function TrainingPlan({ profile, workouts = [] }: any) {
         </div>
       </div>
 
-      <div style={{ background: GRAD.darkHero, color: '#fff', borderRadius: 18, padding: '18px 22px', marginBottom: 24, display: 'flex', gap: 16, alignItems: 'center', position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
+      <div style={{ background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '14px 18px', marginBottom: 18, display: 'flex', gap: 16, alignItems: 'center', position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
         <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(60px)', opacity: 0.4 }} />
         <div style={{ position: 'relative', display: 'flex' }}><Icon C={Calendar} size={32} color="#fff" /></div>
         <div style={{ flex: 1, position: 'relative' }}>
@@ -3043,7 +3043,7 @@ function RaceDay({ workouts, pbs, profile }: any) {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 14, color: t.textSec, marginBottom: 4, fontWeight: 500 }}>Race readiness</div>
         <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 12 }}>
           Race Day <Icon C={Trophy} size={28} color={ACC} className="anim-flicker" />
@@ -3053,7 +3053,7 @@ function RaceDay({ workouts, pbs, profile }: any) {
 
       {/* PROJECTED FINISH HERO */}
       <div style={{
-        background: GRAD.darkHero, color: '#fff', borderRadius: 24, padding: '28px 28px', marginBottom: 20,
+        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 18,
         position: 'relative', overflow: 'hidden', boxShadow: t.heroShadow, border: `1px solid ${ACC}25`,
       }}>
         <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.45 }} />
