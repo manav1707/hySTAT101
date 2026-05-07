@@ -1713,18 +1713,37 @@ function PasteParser({ onImport, lbl, inp }) {
 
   const parsePastedExercises = (text) => {
     const lines = text.split(/\n|→|,(?=\s*[A-Z])/g).map(l => l.trim()).filter(l => l.length > 3);
-    const keywords = {
-      thruster: 'thrusters', squat: 'squats', bench: 'bench', deadlift: 'deadlifts',
-      row: 'rows', "farmer's": 'farmers', farmer: 'farmers',
-      lunge: 'lunges', burpee: 'burpees',
-      interval: 'intervals', 'long run': 'longrun', 'z2': 'longrun',
-      cycle: 'cycle', bike: 'cycle',
-    };
+    // Order matters: more-specific multi-word keys must precede their single-word
+    // overlaps (e.g. 'sandbag lunge' before 'lunge', 'burpee bj' before 'burpee')
+    // so the right EQUIV entry wins. Hyrox direct stations come before generic
+    // gym translations because pastes from the Week plan use station names.
+    const keywords: Array<[string, string]> = [
+      ['burpee bj', 'burpeeBJ_direct'], ['burpee broad', 'burpeeBJ_direct'], ['broad jump', 'burpeeBJ_direct'],
+      ['sandbag lunge', 'sandbaglunges_direct'],
+      ['sled push', 'sledpush_direct'],
+      ['sled pull', 'sledpull_direct'],
+      ['ski erg', 'skierg_direct'], ['skierg', 'skierg_direct'],
+      ['row erg', 'rowing_direct'], ['rowing', 'rowing_direct'],
+      ['wall ball', 'wallballs_direct'], ['wallball', 'wallballs_direct'],
+      ['thruster', 'thrusters'],
+      ['squat', 'squats'],
+      ['bench', 'bench'],
+      ['deadlift', 'deadlifts'],
+      ['bent row', 'rows'], ['barbell row', 'rows'],
+      ["farmer's", 'farmers'], ['farmers carry', 'farmers'], ['farmer', 'farmers'],
+      ['lunge', 'lunges'],
+      ['burpee', 'burpees'],
+      ['interval', 'intervals'],
+      ['long run', 'longrun'], ['z2', 'longrun'],
+      ['cycle', 'cycle'], ['bike', 'cycle'],
+      // Fallback: bare 'row' in a Hyrox context almost always means the erg.
+      ['row', 'rowing_direct'],
+    ];
     const parsed = [];
     for (const line of lines) {
       const lower = line.toLowerCase();
       let match = null;
-      for (const [kw, id] of Object.entries(keywords)) {
+      for (const [kw, id] of keywords) {
         if (lower.includes(kw)) { match = EQUIV.find(e => e.id === id); if (match) break; }
       }
       if (!match) continue;
