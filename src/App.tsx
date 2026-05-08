@@ -6,6 +6,7 @@ import {
   Trash2, Award, Trophy, Check, Clipboard, Pin, CheckCircle2, MessageCircle,
   RefreshCw, Target, Lightbulb, Calendar, Moon,
   Footprints, Wind, Droplet, Snowflake, Apple, HeartPulse,
+  Home, Users, User, Map,
 } from "lucide-react";
 
 const Icon = ({ C, size = 16, color, style, className }: { C: any; size?: number; color?: string; style?: React.CSSProperties; className?: string }) => (
@@ -1691,24 +1692,6 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
 
   return (
     <div>
-      <div style={{
-        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 18,
-        position: 'relative', overflow: 'hidden', boxShadow: t.heroShadow,
-      }}>
-        <div style={{ position: 'absolute', top: -50, right: -50, width: 220, height: 220, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(70px)', opacity: 0.4 }} />
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC_BRIGHT, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Your Rank</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <span style={{ fontSize: 52, fontWeight: 900, color: '#fff', letterSpacing: -2, lineHeight: 0.9 }}>#{myRank}</span>
-              <span style={{ fontSize: 18, color: '#9ca3af', fontWeight: 500 }}>of {leaderboard.length}</span>
-            </div>
-            <div style={{ fontSize: 14, color: '#c7c7d0', marginTop: 10 }}>{myCumulative.toFixed(1)}/80 · cumulative</div>
-          </div>
-          <div style={{ fontSize: 64, color: '#fff' }}><Icon C={myRank === 1 ? Trophy : Award} size={56} color="#fff" /></div>
-        </div>
-      </div>
-
       <div style={{ marginBottom: 22 }}>
         <SectionTitle accent={ACC}>Leaderboard</SectionTitle>
         <div style={{ display: 'grid', gap: 10 }}>
@@ -1784,6 +1767,21 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
           </div>
           <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>Share this code with friends to let them add you.</div>
         </div>
+      </div>
+
+      <div style={{
+        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '14px 18px', marginTop: 18,
+        boxShadow: t.cardShadow,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      }}>
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: 2, color: ACC_BRIGHT, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Rank</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1 }}>#{myRank}</span>
+            <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
+          </div>
+        </div>
+        <Icon C={myRank === 1 ? Trophy : Award} size={28} color="#fff" />
       </div>
     </div>
   );
@@ -3842,10 +3840,10 @@ export default function HyroxTracker() {
   }
 
   const TABS = [
-    { id: 'dashboard', label: 'Home' }, { id: 'race', label: 'Race' },
-    { id: 'friends', label: 'Crew' }, { id: 'myweek', label: 'Week' },
-    { id: 'log', label: 'Log' }, { id: 'progress', label: 'Stats' },
-    { id: 'plan', label: 'Plan' }, { id: 'profile', label: 'Profile' },
+    { id: 'dashboard', label: 'Home', icon: Home }, { id: 'race', label: 'Race', icon: Trophy },
+    { id: 'friends', label: 'Crew', icon: Users }, { id: 'myweek', label: 'Week', icon: Calendar },
+    { id: 'log', label: 'Log', icon: Clipboard }, { id: 'progress', label: 'Stats', icon: BarChart3 },
+    { id: 'plan', label: 'Plan', icon: Map }, { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (
@@ -3868,26 +3866,6 @@ export default function HyroxTracker() {
         </div>
       </div>
 
-      {/* No backdrop-filter on sticky tab bar — recomputing the blur on every
-          repaint underneath causes severe mobile stutter on tab switch. tabBg
-          is already opaque so dropping it has no visual cost here. */}
-      <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, borderBottom: `1px solid ${t.border}`, position: 'sticky', top: 0, zIndex: 9 }}>
-        {TABS.map(tb => {
-          const active = tab === tb.id;
-          return (
-            <button key={tb.id} onClick={() => setTab(tb.id)} style={{
-              flex: 1, minWidth: 0, padding: isCompact ? '14px 2px' : '15px 6px', fontSize: isCompact ? 12 : 13,
-              // Constant fontWeight — changing weight per active state shifts glyph widths and causes a tab-bar reflow on every tap.
-              fontWeight: 700,
-              color: active ? ACC : t.textSec, background: active ? `${ACC}10` : 'transparent', border: 'none', fontFamily: FONT,
-              borderBottom: `3px solid ${active ? ACC : 'transparent'}`, cursor: 'pointer',
-              transition: 'color 0.15s, background 0.15s, border-color 0.15s', letterSpacing: isCompact ? 0 : 0.2,
-              whiteSpace: 'nowrap', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{tb.label}</button>
-          );
-        })}
-      </div>
-
       <InstallPrompt />
 
       {/* Conditional render: only the active panel exists in the DOM. Switching
@@ -3896,7 +3874,7 @@ export default function HyroxTracker() {
           hacks. Trade-off: in-progress form state on Log resets if the user
           navigates away mid-entry; recharts is a separate chunk so the Stats
           remount stays cheap. */}
-      <div style={{ paddingTop: isCompact ? '0.875rem' : '1.25rem', paddingBottom: `calc(${isCompact ? '3rem' : '4rem'} + env(safe-area-inset-bottom))`, ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
+      <div style={{ paddingTop: isCompact ? '0.875rem' : '1.25rem', paddingBottom: isCompact ? '1rem' : '1.5rem', ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
         {tab === 'dashboard' && <div className="hyrox-tab-panel"><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} editWorkout={editWorkout} deleteWorkout={deleteWorkout} /></div>}
         {tab === 'race' && <div className="hyrox-tab-panel"><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
         {tab === 'friends' && <div className="hyrox-tab-panel"><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
@@ -3905,6 +3883,32 @@ export default function HyroxTracker() {
         {tab === 'progress' && <div className="hyrox-tab-panel"><MemoProgress workouts={workouts} pbs={pbs} /></div>}
         {tab === 'plan' && <div className="hyrox-tab-panel"><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
         {tab === 'profile' && <div className="hyrox-tab-panel"><MemoProfileView profile={profile} workouts={workouts} onSave={saveProfile} onClearData={clearAllData} onReplaceData={replaceData} /></div>}
+      </div>
+
+      {/* Bottom tab bar — sticky bottom:0 keeps it pinned to the viewport while
+          scrolling and reserves space at the end of the document so content
+          never hides under it. paddingBottom folds in env(safe-area-inset-bottom)
+          so the bar clears the iOS home indicator. No backdrop-filter — blur
+          recompute under sticky elements stutters on mobile during tab switch. */}
+      <div className="hyrox-tabs" style={{ display: 'flex', background: t.tabBg, borderTop: `1px solid ${t.border}`, position: 'sticky', bottom: 0, zIndex: 10, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        {TABS.map(tb => {
+          const active = tab === tb.id;
+          return (
+            <button key={tb.id} onClick={() => setTab(tb.id)} style={{
+              flex: 1, minWidth: 0, padding: isCompact ? '8px 2px 6px' : '10px 4px 8px', fontSize: isCompact ? 10 : 11,
+              // Constant fontWeight — changing weight per active state shifts glyph widths and causes a tab-bar reflow on every tap.
+              fontWeight: 700,
+              color: active ? ACC : t.textSec, background: active ? `${ACC}10` : 'transparent', border: 'none', fontFamily: FONT,
+              borderTop: `3px solid ${active ? ACC : 'transparent'}`, cursor: 'pointer',
+              transition: 'color 0.15s, background 0.15s, border-color 0.15s', letterSpacing: isCompact ? 0 : 0.2,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: isCompact ? 3 : 4,
+              whiteSpace: 'nowrap', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              <Icon C={tb.icon} size={isCompact ? 18 : 20} color={active ? ACC : t.textSec} />
+              <span>{tb.label}</span>
+            </button>
+          );
+        })}
       </div>
       <SafeAreaDebug />
     </div>
