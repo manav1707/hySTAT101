@@ -1514,9 +1514,9 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 15, color: t.text, marginBottom: 6, fontWeight: 700, letterSpacing: '-0.01em' }}>{greeting},</div>
-        <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 10 }}>{firstName} <Icon C={Hand} size={26} color={t.text} className="anim-wave" /></div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+        <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{greeting}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6, display: 'flex', alignItems: 'center', gap: 10 }}>{firstName} <Icon C={Hand} size={22} color={t.text} className="anim-wave" /></div>
           <Pill grad={GRAD.orange} size="md">{profile.athleteType?.toUpperCase()}</Pill>
           <Pill color={t.textSec} size="md">{profile.level?.toUpperCase()}</Pill>
         </div>
@@ -1692,8 +1692,12 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
 
   return (
     <div>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{leaderboard.length} {leaderboard.length === 1 ? 'athlete' : 'athletes'} · You're #{myRank}</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6 }}>Leaderboard</div>
+      </div>
+
       <div style={{ marginBottom: 22 }}>
-        <SectionTitle accent={ACC}>Leaderboard</SectionTitle>
         <div style={{ display: 'grid', gap: 10 }}>
           {leaderboard.map((a, i) => {
             const rank = i + 1;
@@ -3001,6 +3005,11 @@ function Progress({ workouts, pbs }) {
 
   return (
     <div>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>8 stations · {workouts.length} session{workouts.length === 1 ? '' : 's'} logged</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6 }}>Stats</div>
+      </div>
+
       <div style={{ display: 'flex', gap: 6, marginBottom: 20, background: t.surfaceAlt, padding: 4, borderRadius: 12 }}>
         {[{ id: 'all', l: 'All Stations' }, { id: 'single', l: 'Single' }].map(tb => (
           <button key={tb.id} onClick={() => setView(tb.id)} style={{
@@ -3348,11 +3357,10 @@ function RaceDay({ workouts, pbs, profile }: any) {
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 14, color: t.textSec, marginBottom: 4, fontWeight: 500 }}>Race readiness</div>
-        <div style={{ fontSize: 32, fontWeight: 800, color: t.text, letterSpacing: -0.8, display: 'flex', alignItems: 'center', gap: 12 }}>
-          Race Day <Icon C={Trophy} size={28} color={ACC} className="anim-flicker" />
+        <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{eventDays} days · {stationsLogged}/8 stations{proj.hasPace ? ` · best pace ${fmtTime(proj.pace)}/km` : ' · no run data yet'}</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6, display: 'flex', alignItems: 'center', gap: 10 }}>
+          Race Day <Icon C={Trophy} size={22} color={ACC} className="anim-flicker" />
         </div>
-        <div style={{ fontSize: 13, color: t.textSec, marginTop: 6 }}>{eventDays} days · {stationsLogged}/8 stations logged{proj.hasPace ? ` · best pace ${fmtTime(proj.pace)}/km` : ' · no run data yet'}</div>
       </div>
 
       {/* PROJECTED FINISH HERO */}
