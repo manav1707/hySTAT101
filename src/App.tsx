@@ -1889,7 +1889,7 @@ function PasteParser({ onImport, lbl, inp }) {
   }
 
   return (
-    <div style={{ background: t.card, border: `2px solid ${ACC}`, borderRadius: 16, padding: 18, marginBottom: 16, boxShadow: '0 8px 24px rgba(232,69,27,0.1)' }}>
+    <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 18, marginBottom: 16, boxShadow: t.cardShadow }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: ACC, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={Clipboard} size={14} color={ACC} /> IMPORT</div>
         <button onClick={() => { setOpen(false); setText(''); setParsed({ matched: [], unmatched: [] }); setTried(false); }} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 24, fontFamily: FONT }}>×</button>
@@ -2013,15 +2013,15 @@ function DayExerciseCard({ raw, equiv, parsed, onAdd, t, inp, lbl, swap }: any) 
           <div style={{ fontSize: 16, fontWeight: 800, color: t.text, letterSpacing: -0.4 }}>{paceStr}<span style={{ fontSize: 11, color: t.textSec, fontWeight: 500 }}>/km</span></div>
         </div>
       )}
-      <div style={{ background: grad, color: '#fff', borderRadius: 10, padding: '10px 12px', marginBottom: 10, boxShadow: `0 3px 10px ${color}25` }}>
-        <div style={{ fontSize: 9, letterSpacing: 1.4, fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', opacity: 0.9 }}>Hyrox Equivalent</div>
+      <div style={{ background: t.surfaceAlt, borderRadius: 10, padding: '10px 12px', marginBottom: 10, borderLeft: `3px solid ${color}` }}>
+        <div style={{ fontSize: 9, letterSpacing: 1.4, fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', color: t.textSec }}>Hyrox Equivalent</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.6 }}>{preview}</span>
-          <span style={{ fontSize: 11, opacity: 0.9 }}>{meta.unit} of {meta.name}</span>
+          <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.6, color: t.text }}>{preview}</span>
+          <span style={{ fontSize: 11, color: t.textSec }}>{meta.unit} of {meta.name}</span>
         </div>
-        <div style={{ fontSize: 10, opacity: 0.85, marginTop: 3 }}>{pct}% of race target</div>
+        <div style={{ fontSize: 10, color: ACC, marginTop: 3, fontWeight: 600 }}>{pct}% of race target</div>
       </div>
-      <button onClick={add} style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, background: grad, color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: FONT, boxShadow: `0 3px 10px ${color}25` }}>+ ADD TO WORKOUT</button>
+      <button onClick={add} style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, background: 'transparent', color: ACC, border: `1.5px solid ${ACC}`, borderRadius: 10, cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3 }}>+ ADD TO WORKOUT</button>
     </div>
   );
 }
@@ -2918,55 +2918,75 @@ function LogWorkout({ workouts, saveWorkouts, profile, pbs }) {
     } catch (e) { console.error('Import failed:', e); }
   };
 
+  const niceDate = (() => {
+    const d = new Date(date);
+    const dn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    return `${dn} · ${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
+  })();
+
+  const divider = (label: string) => (
+    <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '22px 0 12px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> {label}
+    </div>
+  );
+
   return (
     <div>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{niceDate}</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6 }}>Log workout</div>
+      </div>
+
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 14, boxShadow: t.cardShadow }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, background: t.surfaceAlt, padding: 4, borderRadius: 10 }}>
+          <button onClick={() => setMode('translate')} style={{
+            flex: 1, padding: '11px', fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: 'pointer', border: 'none', fontFamily: FONT,
+            background: mode === 'translate' ? t.card : 'transparent',
+            color: mode === 'translate' ? ACC : t.textSec,
+            boxShadow: mode === 'translate' ? t.cardShadow : 'none',
+          }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={RefreshCw} size={13} /> Translate</span></button>
+          <button onClick={() => setMode('direct')} style={{
+            flex: 1, padding: '11px', fontSize: 13, fontWeight: 700, borderRadius: 8, cursor: 'pointer', border: 'none', fontFamily: FONT,
+            background: mode === 'direct' ? t.card : 'transparent',
+            color: mode === 'direct' ? ACC : t.textSec,
+            boxShadow: mode === 'direct' ? t.cardShadow : 'none',
+          }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Target} size={13} /> Direct Hyrox</span></button>
+        </div>
+        <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.5, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {mode === 'translate' ? <><Icon C={Lightbulb} size={12} /> Log regular gym exercises — we translate to Hyrox stations.</> : <><Icon C={CheckCircle2} size={12} /> Log actual Hyrox station times and weights.</>}
+        </div>
+        <label style={lbl}>DATE</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} />
+      </div>
+
+      {divider('Quick import')}
       <StravaImport onImport={handleImport} />
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: t.surfaceAlt, padding: 4, borderRadius: 12 }}>
-        <button onClick={() => setMode('translate')} style={{
-          flex: 1, padding: '13px', fontSize: 14, fontWeight: 700, borderRadius: 9, cursor: 'pointer', border: 'none', fontFamily: FONT,
-          background: mode === 'translate' ? t.card : 'transparent',
-          color: mode === 'translate' ? ACC : t.textSec,
-          boxShadow: mode === 'translate' ? t.cardShadow : 'none',
-        }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={RefreshCw} size={14} /> Translate</span></button>
-        <button onClick={() => setMode('direct')} style={{
-          flex: 1, padding: '13px', fontSize: 14, fontWeight: 700, borderRadius: 9, cursor: 'pointer', border: 'none', fontFamily: FONT,
-          background: mode === 'direct' ? t.card : 'transparent',
-          color: mode === 'direct' ? ACC : t.textSec,
-          boxShadow: mode === 'direct' ? t.cardShadow : 'none',
-        }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Target} size={14} /> Direct Hyrox</span></button>
-      </div>
-
-      <div style={{ background: t.surfaceAlt, borderRadius: 12, padding: '14px 16px', marginBottom: 16, fontSize: 13, color: t.textSec, lineHeight: 1.5 }}>
-        {mode === 'translate' ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Lightbulb} size={13} /> Log regular gym exercises — we translate to Hyrox stations.</span> : <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={CheckCircle2} size={13} /> Log actual Hyrox station times and weights.</span>}
-      </div>
-
-      <div style={{ marginBottom: 16 }}><label style={lbl}>DATE</label><input type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
-
+      {divider("Today's plan")}
       {mode === 'translate'
         ? <TranslateMode translated={translated} setTranslated={setTranslated} extras={extras} setExtras={setExtras} inp={inp} lbl={lbl} profile={profile} />
         : <DirectMode stationData={stationData} setStation={setStation} runCount={runCount} setRunCount={setRunCount} runPace={runPace} setRunPace={setRunPace} inp={inp} lbl={lbl} />}
 
       {hasAny && (
-        <div style={{ marginTop: 22 }}>
-          <SectionTitle accent={ACC}>Live Preview</SectionTitle>
+        <>
+          {divider('In this workout')}
           <WorkoutSummary workout={draft} compact />
-        </div>
+        </>
       )}
 
+      {divider('Notes')}
       <VoiceMemoRecorder transcript={memo} setTranscript={setMemo} />
-
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 12 }}>
         <label style={lbl}>QUICK NOTES (OPTIONAL)</label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything to jot down..." rows={2} style={{ ...inp, resize: 'vertical' }} />
       </div>
 
       <button onClick={handleSave} disabled={!hasAny} style={{
-        marginTop: 18, width: '100%', padding: '18px', fontSize: 16, fontWeight: 800,
+        marginTop: 22, width: '100%', padding: '18px', fontSize: 16, fontWeight: 800,
         background: saved ? GRAD.green : !hasAny ? t.borderInput : GRAD.orange,
-        color: '#fff', border: 'none', borderRadius: 16,
+        color: saved || !hasAny ? '#fff' : '#000', border: 'none', borderRadius: 14,
         cursor: hasAny ? 'pointer' : 'not-allowed', fontFamily: FONT, letterSpacing: 0.3,
-        boxShadow: !hasAny ? 'none' : saved ? '0 8px 20px rgba(16,185,129,0.3)' : '0 8px 20px rgba(232,69,27,0.3)',
+        boxShadow: !hasAny ? 'none' : saved ? '0 8px 20px rgba(16,185,129,0.3)' : `0 8px 20px ${ACC}30`,
       }}>{saved ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon C={Check} size={16} color="#fff" /> WORKOUT SAVED!</span> : 'SAVE WORKOUT'}</button>
 
       {insightFor && profile && (
