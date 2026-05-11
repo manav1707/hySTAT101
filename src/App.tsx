@@ -1756,36 +1756,33 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
         </div>
       </div>
 
-      <div style={{ background: GRAD.darkHero, borderRadius: 18, padding: 20, position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
-        <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(50px)', opacity: 0.3 }} />
-        <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>Your Athlete ID</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, color: '#fff' }}>{profile.userId}</div>
-            <button onClick={copyMyId} style={{
-              padding: '11px 20px', fontSize: 13, fontWeight: 700,
-              background: copied ? GRAD.green : GRAD.orange, color: '#fff', border: 'none', borderRadius: 999,
-              cursor: 'pointer', fontFamily: FONT,
-              boxShadow: copied ? '0 4px 12px rgba(16,185,129,0.3)' : '0 4px 12px rgba(232,69,27,0.3)',
-            }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Check} size={13} color="#fff" /> COPIED</span> : 'COPY ID'}</button>
-          </div>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>Share this code with friends to let them add you.</div>
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 18, boxShadow: t.cardShadow }}>
+        <div style={{ fontSize: 11, color: t.textSec, marginBottom: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>Your Athlete ID</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, color: t.text }}>{profile.userId}</div>
+          <button onClick={copyMyId} style={{
+            padding: '10px 16px', fontSize: 12, fontWeight: 700,
+            background: copied ? ACC : t.surfaceAlt, color: copied ? '#000' : t.text,
+            border: `1px solid ${copied ? ACC : t.border}`, borderRadius: 999,
+            cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
+          }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Check} size={13} color="#000" /> COPIED</span> : 'COPY ID'}</button>
         </div>
+        <div style={{ fontSize: 12, color: t.textSec, marginTop: 10 }}>Share this code with friends to let them add you.</div>
       </div>
 
       <div style={{
-        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '14px 18px', marginTop: 18,
+        background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '14px 18px', marginTop: 14,
         boxShadow: t.cardShadow,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <div>
-          <div style={{ fontSize: 10, letterSpacing: 2, color: ACC_BRIGHT, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Rank</div>
+          <div style={{ fontSize: 10, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Rank</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1 }}>#{myRank}</span>
-            <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: -1, lineHeight: 1 }}>#{myRank}</span>
+            <span style={{ fontSize: 13, color: t.textSec, fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
           </div>
         </div>
-        <Icon C={myRank === 1 ? Trophy : Award} size={28} color="#fff" />
+        <Icon C={myRank === 1 ? Trophy : Award} size={26} color={ACC} />
       </div>
     </div>
   );
@@ -3343,7 +3340,7 @@ function TrainingPlan({ profile, workouts = [] }: any) {
   );
 }
 
-function RaceDay({ workouts, pbs, profile }: any) {
+function RaceDay({ workouts, pbs, profile, embedded = false }: any) {
   const { t } = useTheme();
   const [strategy, setStrategy] = useState('pb');
   const proj = projectRace(workouts, pbs, strategy);
@@ -3356,43 +3353,41 @@ function RaceDay({ workouts, pbs, profile }: any) {
 
   return (
     <div>
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{eventDays} days · {stationsLogged}/8 stations{proj.hasPace ? ` · best pace ${fmtTime(proj.pace)}/km` : ' · no run data yet'}</div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6, display: 'flex', alignItems: 'center', gap: 10 }}>
-          Race Day <Icon C={Trophy} size={22} color={ACC} className="anim-flicker" />
+      {!embedded && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{eventDays} days · {stationsLogged}/8 stations{proj.hasPace ? ` · best pace ${fmtTime(proj.pace)}/km` : ' · no run data yet'}</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6, display: 'flex', alignItems: 'center', gap: 10 }}>
+            Race Day <Icon C={Trophy} size={22} color={ACC} className="anim-flicker" />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* PROJECTED FINISH HERO */}
+      {/* PROJECTED FINISH — demoted to secondary so Score stays the only hero on Home */}
       <div style={{
-        background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 18,
-        position: 'relative', overflow: 'hidden', boxShadow: t.heroShadow, border: `1px solid ${ACC}25`,
+        background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '16px 18px', marginBottom: 18,
+        boxShadow: t.cardShadow,
       }}>
-        <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.45 }} />
-        <div style={{ position: 'absolute', bottom: -40, left: -40, width: 200, height: 200, background: ACC, borderRadius: '50%', filter: 'blur(80px)', opacity: 0.15 }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <Icon C={Target} size={14} color={ACC_BRIGHT} />
-            <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC_BRIGHT, fontWeight: 700, textTransform: 'uppercase' }}>Projected Finish</div>
-          </div>
-          <div style={{ fontSize: 64, fontWeight: 900, background: GRAD.orangeGlow, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: -2.5, lineHeight: 0.9 }}>{fmtHMS(proj.total)}</div>
-          <div style={{ display: 'flex', gap: 24, marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <div>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Stations</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(proj.stationsTotal)}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Run (8km)</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(proj.runsTotal)}</div>
-            </div>
-          </div>
-          {(stationsLogged < 8 || !proj.hasPace) && (
-            <div style={{ fontSize: 11, color: '#FBBF24', marginTop: 14, fontWeight: 600, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon C={AlertTriangle} size={12} color="#FBBF24" />
-              {8 - stationsLogged > 0 && `${8 - stationsLogged} station${8 - stationsLogged > 1 ? 's' : ''} use slow-end estimates`}{!proj.hasPace && (stationsLogged < 8 ? ' · ' : '')}{!proj.hasPace && 'run pace defaulted to 6:00/km'}
-            </div>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <Icon C={Target} size={13} color={ACC} />
+          <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase' }}>Projected Finish</div>
         </div>
+        <div style={{ fontSize: 38, fontWeight: 900, color: t.text, letterSpacing: -1.2, lineHeight: 1, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(proj.total)}</div>
+        <div style={{ display: 'flex', gap: 24, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${t.border}` }}>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: 1.5, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Stations</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(proj.stationsTotal)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, letterSpacing: 1.5, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Run (8km)</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.text, fontFamily: 'JetBrains Mono, SF Mono, Monaco, monospace' }}>{fmtHMS(proj.runsTotal)}</div>
+          </div>
+        </div>
+        {(stationsLogged < 8 || !proj.hasPace) && (
+          <div style={{ fontSize: 11, color: '#FBBF24', marginTop: 14, fontWeight: 600, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon C={AlertTriangle} size={12} color="#FBBF24" />
+            {8 - stationsLogged > 0 && `${8 - stationsLogged} station${8 - stationsLogged > 1 ? 's' : ''} use slow-end estimates`}{!proj.hasPace && (stationsLogged < 8 ? ' · ' : '')}{!proj.hasPace && 'run pace defaulted to 6:00/km'}
+          </div>
+        )}
       </div>
 
       {/* STRATEGY SELECTOR */}
@@ -3848,10 +3843,12 @@ export default function HyroxTracker() {
   }
 
   const TABS = [
-    { id: 'dashboard', label: 'Home', icon: Home }, { id: 'race', label: 'Race', icon: Trophy },
-    { id: 'friends', label: 'Crew', icon: Users }, { id: 'myweek', label: 'Week', icon: Calendar },
-    { id: 'log', label: 'Log', icon: Clipboard }, { id: 'progress', label: 'Stats', icon: BarChart3 },
-    { id: 'plan', label: 'Plan', icon: Map }, { id: 'profile', label: 'Profile', icon: User },
+    { id: 'dashboard', label: 'Home', icon: Home },
+    { id: 'log', label: 'Log', icon: Clipboard },
+    { id: 'plan', label: 'Plan', icon: Map },
+    { id: 'progress', label: 'Stats', icon: BarChart3 },
+    { id: 'friends', label: 'Crew', icon: Users },
+    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (
@@ -3883,13 +3880,24 @@ export default function HyroxTracker() {
           navigates away mid-entry; recharts is a separate chunk so the Stats
           remount stays cheap. */}
       <div style={{ paddingTop: isCompact ? '0.875rem' : '1.25rem', paddingBottom: isCompact ? '1rem' : '1.5rem', ['--panel-pad-x' as any]: isCompact ? '0.875rem' : '1.75rem' }}>
-        {tab === 'dashboard' && <div className="hyrox-tab-panel"><MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} editWorkout={editWorkout} deleteWorkout={deleteWorkout} /></div>}
-        {tab === 'race' && <div className="hyrox-tab-panel"><MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} /></div>}
-        {tab === 'friends' && <div className="hyrox-tab-panel"><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
-        {tab === 'myweek' && <div className="hyrox-tab-panel"><MemoMyWeek profile={profile} /></div>}
+        {tab === 'dashboard' && (
+          <div className="hyrox-tab-panel">
+            <MemoDashboard workouts={workouts} pbs={pbs} setTab={setTab} profile={profile} editWorkout={editWorkout} deleteWorkout={deleteWorkout} />
+            <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '24px 0 12px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Race Day
+            </div>
+            <MemoRaceDay workouts={workouts} pbs={pbs} profile={profile} embedded />
+          </div>
+        )}
         {tab === 'log' && <div className="hyrox-tab-panel"><MemoLogWorkout workouts={workouts} saveWorkouts={saveWorkouts} profile={profile} pbs={pbs} /></div>}
+        {tab === 'plan' && (
+          <div className="hyrox-tab-panel">
+            <MemoTrainingPlan profile={profile} workouts={workouts} />
+            <MemoMyWeek profile={profile} />
+          </div>
+        )}
         {tab === 'progress' && <div className="hyrox-tab-panel"><MemoProgress workouts={workouts} pbs={pbs} /></div>}
-        {tab === 'plan' && <div className="hyrox-tab-panel"><MemoTrainingPlan profile={profile} workouts={workouts} /></div>}
+        {tab === 'friends' && <div className="hyrox-tab-panel"><MemoFriends profile={profile} saveProfile={saveProfile} workouts={workouts} pbs={pbs} /></div>}
         {tab === 'profile' && <div className="hyrox-tab-panel"><MemoProfileView profile={profile} workouts={workouts} onSave={saveProfile} onClearData={clearAllData} onReplaceData={replaceData} /></div>}
       </div>
 
