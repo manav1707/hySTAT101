@@ -3181,15 +3181,15 @@ function MyWeek({ profile }: any) {
       </div>
 
       {/* Phase focus card */}
-      <div style={{ background: t.card, border: `1.5px solid ${phase.color}40`, borderRadius: 16, padding: '14px 18px', marginBottom: 18, position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
+      <div style={{ background: t.card, border: `1.5px solid ${phase.color}40`, borderRadius: 16, padding: '16px 18px', marginBottom: 18, position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
         <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: phase.grad }} />
-        <div style={{ paddingLeft: 4 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: phase.color, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ paddingLeft: 6 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: phase.color, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
             <Icon C={Target} size={11} color={phase.color} /> Hyrox Focus
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: week.extraSessions.length ? 8 : 0 }}>{week.hyroxFocus}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: week.extraSessions.length ? 10 : 0, lineHeight: 1.4 }}>{week.hyroxFocus}</div>
           {week.extraSessions.map((s: string, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: t.textMute, marginBottom: 3 }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: t.textMute, marginBottom: 5, lineHeight: 1.5 }}>
               <span style={{ color: phase.color, flexShrink: 0, fontWeight: 700 }}>›</span><span>{s}</span>
             </div>
           ))}
@@ -3203,24 +3203,24 @@ function MyWeek({ profile }: any) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'grid', gap: 12 }}>
         {week.days.map((d: any) => {
           const isToday = d.day === todayDayName;
           return (
             <div key={d.day} style={{
               background: isToday ? `linear-gradient(135deg, ${phase.color}10 0%, ${phase.color}05 100%)` : t.card,
               border: `1.5px solid ${isToday ? phase.color : t.border}`,
-              borderRadius: 14, padding: '14px 16px', boxShadow: isToday ? `0 8px 20px ${phase.color}20` : t.cardShadow,
+              borderRadius: 14, padding: '16px 18px', boxShadow: isToday ? `0 8px 20px ${phase.color}20` : t.cardShadow,
               position: 'relative', overflow: 'hidden',
             }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: phase.grad }} />
-              <div style={{ paddingLeft: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: d.sessions.length ? 8 : 0 }}>
+              <div style={{ paddingLeft: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: d.sessions.length ? 10 : 0 }}>
                   <span style={{ fontSize: 13, fontWeight: 800, color: phase.color, minWidth: 36 }}>{d.day}</span>
                   {isToday && <span style={{ background: phase.grad, color: '#000', fontSize: 10, padding: '3px 10px', borderRadius: 999, fontWeight: 800, letterSpacing: 0.5 }}>TODAY</span>}
                 </div>
                 {d.sessions.map((s: string, j: number) => (
-                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: t.textMute, marginBottom: 4 }}>
+                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: t.textMute, marginBottom: 6, lineHeight: 1.5 }}>
                     <span style={{ color: phase.color, flexShrink: 0, fontWeight: 700 }}>›</span><span>{s}</span>
                   </div>
                 ))}
@@ -3255,14 +3255,13 @@ function TrainingPlan({ profile, workouts = [] }: any) {
 
   return (
     <div>
-      {/* === SMART TAPER STATUS === */}
+      {/* === SMART TAPER STATUS — Plan's one hero, kept but visually calmed === */}
       <div style={{
-        background: t.card, border: `2px solid ${urgencyColor}`, borderRadius: 16,
-        padding: '18px 20px', marginBottom: 18, position: 'relative', overflow: 'hidden',
-        boxShadow: `0 8px 24px ${urgencyColor}25`,
+        background: t.card, border: `1.5px solid ${urgencyColor}`, borderRadius: 16,
+        padding: '18px 20px', marginBottom: 22, position: 'relative', overflow: 'hidden',
+        boxShadow: t.cardShadow,
       }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: urgencyColor }} />
-        <div style={{ position: 'absolute', top: -50, right: -50, width: 160, height: 160, background: urgencyColor, borderRadius: '50%', filter: 'blur(70px)', opacity: 0.18 }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: urgencyColor }} />
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
             <div style={{ minWidth: 0, flex: 1 }}>
@@ -3309,34 +3308,33 @@ function TrainingPlan({ profile, workouts = [] }: any) {
         </div>
       </div>
 
-      <div style={{ background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '14px 18px', marginBottom: 18, display: 'flex', gap: 16, alignItems: 'center', position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
-        <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, background: GRAD.orangeGlow, borderRadius: '50%', filter: 'blur(60px)', opacity: 0.4 }} />
-        <div style={{ position: 'relative', display: 'flex' }}><Icon C={Calendar} size={32} color="#fff" /></div>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{plan.totalWeeks}-Week Plan → Hyrox {profile.eventCity}</div>
-          <div style={{ fontSize: 13, color: '#9ca3af', marginTop: 2 }}>{planStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-          <div style={{ fontSize: 11, color: ACC_BRIGHT, marginTop: 4, fontWeight: 600 }}>{usingDefault ? `Default ${profile.level} split — add a routine on Profile to personalize` : `Built on your routine (${profile.routine?.parsed?.days?.length || 0} days)`}</div>
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '14px 18px', marginBottom: 22, display: 'flex', gap: 14, alignItems: 'center', boxShadow: t.cardShadow }}>
+        <Icon C={Calendar} size={26} color={ACC} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{plan.totalWeeks}-Week Plan → Hyrox {profile.eventCity}</div>
+          <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>{planStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          <div style={{ fontSize: 11, color: ACC, marginTop: 4, fontWeight: 600 }}>{usingDefault ? `Default ${profile.level} split — add a routine on Profile to personalize` : `Built on your routine (${profile.routine?.parsed?.days?.length || 0} days)`}</div>
         </div>
       </div>
       {phaseGroups.map(({ phase, weeks: groupWeeks }) => (
-        <div key={phase.id} style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <div key={phase.id} style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <div style={{ width: 16, height: 16, borderRadius: 4, background: phase.grad }} />
             <div style={{ fontSize: 15, fontWeight: 800, color: phase.color, letterSpacing: 1, textTransform: 'uppercase' }}>{phase.label}</div>
             <div style={{ fontSize: 11, color: t.textSec, fontWeight: 600 }}>· {groupWeeks.length} week{groupWeeks.length === 1 ? '' : 's'}</div>
           </div>
-          <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
             {groupWeeks.map((week: any) => (
               <div key={week.n} style={{
                 background: week.isCurrent ? `linear-gradient(135deg, ${phase.color}15 0%, ${phase.color}05 100%)` : week.isPast ? t.surfaceAlt : t.card,
                 border: `1.5px solid ${week.isCurrent ? phase.color : t.border}`,
-                borderRadius: 14, padding: '14px 16px', opacity: week.isPast ? 0.55 : 1,
+                borderRadius: 14, padding: '16px 18px', opacity: week.isPast ? 0.55 : 1,
                 position: 'relative', overflow: 'hidden',
                 boxShadow: week.isCurrent ? `0 8px 24px ${phase.color}25` : week.isPast ? 'none' : t.cardShadow,
               }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: phase.grad }} />
-                <div style={{ paddingLeft: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ paddingLeft: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 13, fontWeight: 800, color: phase.color }}>WEEK {week.n}</span>
                       {week.isCurrent && <span style={{ background: phase.grad, color: '#000', fontSize: 10, padding: '3px 10px', borderRadius: 999, fontWeight: 800 }}>CURRENT</span>}
@@ -3344,9 +3342,9 @@ function TrainingPlan({ profile, workouts = [] }: any) {
                     </div>
                     <span style={{ fontSize: 13, color: t.textSec, fontWeight: 500 }}>{week.start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 8 }}>{week.hyroxFocus}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 10, lineHeight: 1.4 }}>{week.hyroxFocus}</div>
                   {week.extraSessions.map((s: string, i: number) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: t.textMute, marginBottom: 4 }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: t.textMute, marginBottom: 6, lineHeight: 1.5 }}>
                       <span style={{ color: phase.color, flexShrink: 0, fontWeight: 700 }}>›</span><span>{s}</span>
                     </div>
                   ))}
