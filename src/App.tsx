@@ -1339,6 +1339,12 @@ function ProfileView({ profile, workouts, onSave, onClearData, onReplaceData }: 
       </div>
 
       <button onClick={() => setEditing(true)} style={{ width: '100%', padding: '16px', fontSize: 15, fontWeight: 700, background: t.card, color: ACC, border: `2px solid ${ACC}`, borderRadius: 14, cursor: 'pointer', fontFamily: FONT, marginBottom: 10 }}>EDIT PROFILE</button>
+      {(window as any).auth?.signOut && (
+        <button
+          onClick={() => (window as any).auth.signOut()}
+          style={{ width: '100%', padding: '13px', fontSize: 13, fontWeight: 600, background: t.surfaceAlt, color: t.text, border: `1px solid ${t.border}`, borderRadius: 12, cursor: 'pointer', fontFamily: FONT, marginBottom: 10 }}
+        >Sign out</button>
+      )}
       {onClearData && !confirmClear && (
         <button onClick={() => setConfirmClear(true)} style={{ width: '100%', padding: '13px', fontSize: 13, fontWeight: 500, background: 'transparent', color: '#DC2626', border: 'none', borderRadius: 12, cursor: 'pointer', fontFamily: FONT }}>Clear all data & reset</button>
       )}
