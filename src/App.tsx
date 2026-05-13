@@ -1811,51 +1811,51 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
         </div>
       </div>
 
-      <div style={{ marginBottom: 22 }}>
+      <div style={{ marginBottom: 18 }}>
         <SectionTitle accent={ACC}>Add a Friend</SectionTitle>
-        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 18, padding: 18, boxShadow: t.cardShadow }}>
-          <div style={{ fontSize: 13, color: t.textSec, marginBottom: 12 }}>Enter your friend's 6-character Athlete ID:</div>
+        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 14, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
+          <div style={{ fontSize: 12, color: t.textSec, marginBottom: 10 }}>Enter your friend's 6-character Athlete ID:</div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
-              style={{ flex: 1, minWidth: 0, padding: '16px', fontSize: 20, fontWeight: 700, borderRadius: 12, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, textAlign: 'center', textTransform: 'uppercase' }} />
+              style={{ flex: 1, minWidth: 0, padding: '12px', fontSize: 17, fontWeight: 700, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, textAlign: 'center', textTransform: 'uppercase' }} />
             <button onClick={addFriend} disabled={adding || !addId} style={{
-              padding: '16px 24px', fontSize: 14, fontWeight: 700,
-              background: adding || !addId ? t.borderInput : GRAD.orange, color: '#fff', border: 'none', borderRadius: 12,
-              cursor: adding || !addId ? 'not-allowed' : 'pointer', fontFamily: FONT,
+              padding: '12px 16px', fontSize: 13, fontWeight: 700,
+              background: adding || !addId ? t.borderInput : GRAD.orange, color: '#fff', border: 'none', borderRadius: 10,
+              cursor: adding || !addId ? 'not-allowed' : 'pointer', fontFamily: FONT, flexShrink: 0,
               boxShadow: adding || !addId ? 'none' : '0 4px 12px rgba(232,69,27,0.3)',
             }}>{adding ? '...' : 'ADD'}</button>
           </div>
-          {error && <div style={{ fontSize: 13, color: '#DC2626', marginTop: 10, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={13} color="#DC2626" /> {error}</div>}
+          {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
         </div>
       </div>
 
-      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 18, boxShadow: t.cardShadow }}>
-        <div style={{ fontSize: 11, color: t.textSec, marginBottom: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>Your Athlete ID</div>
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 14, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ fontSize: 11, color: t.textSec, marginBottom: 8, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>Your Athlete ID</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 24, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 4, color: t.text }}>{profile.userId}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, color: t.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.userId}</div>
           <button onClick={copyMyId} style={{
-            padding: '10px 16px', fontSize: 12, fontWeight: 700,
+            padding: '8px 14px', fontSize: 11, fontWeight: 700,
             background: copied ? ACC : t.surfaceAlt, color: copied ? '#000' : t.text,
             border: `1px solid ${copied ? ACC : t.border}`, borderRadius: 999,
-            cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
-          }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon C={Check} size={13} color="#000" /> COPIED</span> : 'COPY ID'}</button>
+            cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3, flexShrink: 0,
+          }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon C={Check} size={12} color="#000" /> COPIED</span> : 'COPY ID'}</button>
         </div>
-        <div style={{ fontSize: 12, color: t.textSec, marginTop: 10 }}>Share this code with friends to let them add you.</div>
+        <div style={{ fontSize: 11, color: t.textSec, marginTop: 8 }}>Share with friends so they can add you.</div>
       </div>
 
       <div style={{
-        background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '14px 18px', marginTop: 14,
+        background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '12px 14px', marginTop: 12,
         boxShadow: t.cardShadow,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
       }}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 10, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Rank</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: -1, lineHeight: 1 }}>#{myRank}</span>
-            <span style={{ fontSize: 13, color: t.textSec, fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 24, fontWeight: 900, color: t.text, letterSpacing: -0.8, lineHeight: 1 }}>#{myRank}</span>
+            <span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
           </div>
         </div>
-        <Icon C={myRank === 1 ? Trophy : Award} size={26} color={ACC} />
+        <Icon C={myRank === 1 ? Trophy : Award} size={22} color={ACC} />
       </div>
     </div>
   );
@@ -3113,35 +3113,35 @@ function Progress({ workouts, pbs }) {
       {view === 'all' ? (
         <div>
           <SectionTitle accent={ACC}>All Stations Progression</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
             {STATIONS.map(s => {
               const data = getDataFor(s.id);
               const spb = pbs[s.id];
               const sc = computeStationScore(s.id, workouts, spb);
               return (
-                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '12px 14px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
+                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 12px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: s.grad }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2, gap: 8 }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.2, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.abbr}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+                      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.abbr}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {spb ? (
                         <>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
-                          {sc && <div style={{ fontSize: 10, color: t.textSec, marginTop: 2, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
+                          <div style={{ fontSize: 14, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
+                          {sc && <div style={{ fontSize: 10, color: t.textSec, marginTop: 1, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
                         </>
                       ) : <div style={{ fontSize: 11, color: t.textSec }}>No data</div>}
                     </div>
                   </div>
                   {data.length < 2 ? (
-                    <div style={{ fontSize: 12, color: t.textSec, textAlign: 'center', padding: '18px 0', background: t.surfaceAlt, borderRadius: 10, marginTop: 8, fontWeight: 500 }}>
+                    <div style={{ fontSize: 11, color: t.textSec, textAlign: 'center', padding: '14px 0', background: t.surfaceAlt, borderRadius: 10, marginTop: 6, fontWeight: 500 }}>
                       {data.length === 0 ? 'Not logged yet' : 'Log 1 more session'}
                     </div>
                   ) : (
-                    <div style={{ marginTop: 8 }}>
-                      <ResponsiveContainer width="100%" height={72}>
+                    <div style={{ marginTop: 6 }}>
+                      <ResponsiveContainer width="100%" height={60}>
                         <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                           <defs>
                             <linearGradient id={`grad-${s.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -3163,8 +3163,8 @@ function Progress({ workouts, pbs }) {
                           <Area type="monotone" dataKey="time" stroke={s.color} strokeWidth={2.5} fill={`url(#grad-${s.id})`} isAnimationActive={false} activeDot={{ r: 4, fill: s.color }} />
                         </AreaChart>
                       </ResponsiveContainer>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: t.textSec, marginTop: 4, fontWeight: 500 }}>
-                        <span>{data[0]?.date}</span><span>↓ lower = better</span><span>{data[data.length - 1]?.date}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: t.textSec, marginTop: 3, fontWeight: 500 }}>
+                        <span>{data[0]?.date}</span><span>{data[data.length - 1]?.date}</span>
                       </div>
                     </div>
                   )}
@@ -3732,47 +3732,6 @@ function FlipUnit({ value, label, compact = false }: { value: number; label: str
   );
 }
 
-function generateSeedWorkouts() {
-  const STATION_IDS = ['skierg', 'sledPush', 'sledPull', 'burpee', 'rowing', 'farmers', 'lunges', 'wallballs'];
-  const BASELINE = { skierg: 270, sledPush: 52, sledPull: 54, burpee: 360, rowing: 270, farmers: 88, lunges: 92, wallballs: 360 };
-  const TARGET   = { skierg: 215, sledPush: 36, sledPull: 38, burpee: 270, rowing: 220, farmers: 64, lunges: 68, wallballs: 280 };
-  const WEIGHT   = { sledPush: 102, sledPull: 102, farmers: 24, lunges: 20, wallballs: 6 };
-
-  let s = 1337;
-  const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-
-  const out: any[] = [];
-  const today = new Date(); today.setHours(0,0,0,0);
-  const start = new Date(today); start.setDate(start.getDate() - 60);
-
-  for (let week = 0; week < 9; week++) {
-    const progress = Math.min(1, week / 8);
-    for (const dayOff of [0, 2, 5]) {
-      const date = new Date(start); date.setDate(start.getDate() + week * 7 + dayOff);
-      if (date > today) break;
-
-      const numStations = 3 + Math.floor(rand() * 4);
-      const ids = [...STATION_IDS].sort(() => rand() - 0.5).slice(0, numStations);
-      const stations: any = {};
-      for (const sid of ids) {
-        const b = BASELINE[sid as keyof typeof BASELINE], tg = TARGET[sid as keyof typeof TARGET];
-        const noise = (rand() - 0.5) * (b - tg) * 0.25;
-        const time = Math.max(tg - 5, Math.round(b - (b - tg) * progress + noise));
-        stations[sid] = { time, weight: WEIGHT[sid as keyof typeof WEIGHT] ?? null };
-      }
-
-      const runs = rand() < 0.55 ? { count: 4 + Math.floor(rand() * 5), pace: 240 + Math.floor(rand() * 90) } : null;
-      out.push({
-        id: date.getTime() + Math.floor(rand() * 1000),
-        date: date.toISOString().slice(0, 10),
-        sessionType: rand() < 0.5 ? 'direct' : 'translate',
-        stations, runs, translated: [], notes: '', voiceMemo: null,
-      });
-    }
-  }
-  return out;
-}
-
 // Tinted stripes over the four safe-area insets so you can SEE where the
 // notch/home-indicator/landscape-cutouts actually sit. Visit ?safe-debug=1 to
 // enable — pink for top/bottom, cyan for left/right. Pure overlay, pointer-events
@@ -3846,20 +3805,13 @@ export default function HyroxTracker() {
           window.storage.get('hyrox_profile_v2').catch(() => null),
           window.storage.get('hyrox_theme').catch(() => null),
         ]);
-        if (w) {
-          setWorkouts(JSON.parse(w.value));
-        } else {
-          const seed = generateSeedWorkouts();
-          setWorkouts(seed);
-          try { await window.storage.set('hyrox_workouts_v3', JSON.stringify(seed)); } catch (e) {}
-        }
-        if (p) {
-          setProfile(JSON.parse(p.value));
-        } else {
-          const seedProfile = { ...DEFAULT_PROFILE, userId: genUserId(), name: 'Manav', age: '28', bodyweight: '75', occupation: 'Engineer' };
-          setProfile(seedProfile);
-          try { await window.storage.set('hyrox_profile_v2', JSON.stringify(seedProfile)); } catch (e) {}
-        }
+        // No auto-seed: a brand-new user (or one who just hit "Clear all data
+        // & reset") should land on the onboarding ProfileForm, not on a deck
+        // of synthetic demo workouts. generateSeedWorkouts uses a fixed PRNG
+        // seed, so the demo data looks identical every time the seed runs —
+        // after a reset that reads as the old data resurrecting.
+        if (w) setWorkouts(JSON.parse(w.value));
+        if (p) setProfile(JSON.parse(p.value));
         if (th?.value === 'dark' || th?.value === 'light') setMode(th.value);
       } catch (e) {}
       setLoading(false);
