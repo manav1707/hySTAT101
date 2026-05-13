@@ -228,11 +228,15 @@ const LANDMARK_ICONS: Record<string, React.FC<{ size?: number }>> = {
 function CityLabel({ city, size = 14 }: { city: string | undefined | null; size?: number }) {
   if (!city) return null;
   const LM = LANDMARK_ICONS[city];
+  // Icon is inline-block + plain "Hyrox <city>" text (no inline-flex wrapper)
+  // so the label flows with surrounding text and wraps naturally inside narrow
+  // flex columns like the Crew row; otherwise the whole label is one
+  // unbreakable unit and pushes the row past the viewport.
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      {LM && <LM size={size} />}
-      <span>Hyrox {city}</span>
-    </span>
+    <>
+      {LM && <span style={{ display: 'inline-block', verticalAlign: '-2px', marginRight: 6 }}><LM size={size} /></span>}
+      Hyrox {city}
+    </>
   );
 }
 
@@ -1775,31 +1779,32 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
               <div key={a.userId} style={{
                 background: isMe ? `linear-gradient(135deg, ${ACC}15 0%, ${ACC}05 100%)` : t.card,
                 border: `1.5px solid ${isMe ? ACC : t.border}`,
-                borderRadius: 16, padding: '14px 18px',
-                display: 'flex', alignItems: 'center', gap: 14,
+                borderRadius: 16, padding: '12px 14px',
+                display: 'flex', alignItems: 'center', gap: 10,
                 boxShadow: isMe ? '0 8px 24px rgba(232,69,27,0.12)' : t.cardShadow,
+                minWidth: 0, overflow: 'hidden',
               }}>
-                <div style={{ minWidth: 40, textAlign: 'center' }}>
-                  {rank <= 3 ? <Icon C={medals[rank - 1]} size={26} color={t.text} /> : <span style={{ fontSize: 20, fontWeight: 800, color: t.textSec }}>#{rank}</span>}
+                <div style={{ minWidth: 32, textAlign: 'center', flexShrink: 0 }}>
+                  {rank <= 3 ? <Icon C={medals[rank - 1]} size={22} color={t.text} /> : <span style={{ fontSize: 17, fontWeight: 800, color: t.textSec }}>#{rank}</span>}
                 </div>
                 <div style={{
-                  width: 48, height: 48, borderRadius: 24,
+                  width: 40, height: 40, borderRadius: 20, flexShrink: 0,
                   background: isMe ? GRAD.orange : t.surfaceAlt,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                   boxShadow: isMe ? '0 4px 12px rgba(232,69,27,0.3)' : 'none',
-                }}><Icon C={TypeIcon} size={22} color={isMe ? '#fff' : t.text} /></div>
+                }}><Icon C={TypeIcon} size={20} color={isMe ? '#fff' : t.text} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {a.name}
                     {isMe && <span style={{ fontSize: 10, background: GRAD.orange, color: '#fff', padding: '3px 8px', borderRadius: 999, fontWeight: 800 }}>YOU</span>}
                   </div>
-                  <div style={{ fontSize: 13, color: t.textSec, marginTop: 2 }}><CityLabel city={a.eventCity} size={13} /> · {a.totalSessions || 0} sessions</div>
+                  <div style={{ fontSize: 12, color: t.textSec, marginTop: 2, lineHeight: 1.4 }}><CityLabel city={a.eventCity} size={12} /> · {a.totalSessions || 0} sessions</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 24, fontWeight: 800, background: GRAD.orange, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1, letterSpacing: -0.5 }}>{(a.cumulativeScore || 0).toFixed(1)}</div>
-                  <div style={{ fontSize: 11, color: t.textSec, marginTop: 3, fontWeight: 500 }}>/ 80</div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, background: GRAD.orange, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1, letterSpacing: -0.5 }}>{(a.cumulativeScore || 0).toFixed(1)}</div>
+                  <div style={{ fontSize: 10, color: t.textSec, marginTop: 3, fontWeight: 500 }}>/ 80</div>
                 </div>
-                {!isMe && <button onClick={() => removeFriend(a.userId)} style={{ background: 'none', border: 'none', color: t.borderInput, cursor: 'pointer', fontSize: 22, padding: 4, fontFamily: FONT }}>×</button>}
+                {!isMe && <button onClick={() => removeFriend(a.userId)} style={{ background: 'none', border: 'none', color: t.borderInput, cursor: 'pointer', fontSize: 20, padding: 2, fontFamily: FONT, flexShrink: 0 }}>×</button>}
               </div>
             );
           })}
