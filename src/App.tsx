@@ -1346,7 +1346,7 @@ function ProfileView({ profile, workouts, onSave, onClearData, onReplaceData }: 
           </div>
           <div style={{ marginTop: 20, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}><CityLabel city={profile.eventCity} size={15} /></div>
+              <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>Hyrox {profile.eventCity}</div>
               <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -1798,7 +1798,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
                     {a.name}
                     {isMe && <span style={{ fontSize: 10, background: GRAD.orange, color: '#fff', padding: '3px 8px', borderRadius: 999, fontWeight: 800 }}>YOU</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: t.textSec, marginTop: 2, lineHeight: 1.4 }}><CityLabel city={a.eventCity} size={12} /> · {a.totalSessions || 0} sessions</div>
+                  <div style={{ fontSize: 12, color: t.textSec, marginTop: 2, lineHeight: 1.4 }}>Hyrox {a.eventCity} · {a.totalSessions || 0} sessions</div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <div style={{ fontSize: 22, fontWeight: 800, background: GRAD.orange, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1, letterSpacing: -0.5 }}>{(a.cumulativeScore || 0).toFixed(1)}</div>
@@ -3113,35 +3113,35 @@ function Progress({ workouts, pbs }) {
       {view === 'all' ? (
         <div>
           <SectionTitle accent={ACC}>All Stations Progression</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
             {STATIONS.map(s => {
               const data = getDataFor(s.id);
               const spb = pbs[s.id];
               const sc = computeStationScore(s.id, workouts, spb);
               return (
-                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 18, padding: '16px 18px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: s.grad }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.abbr}</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{s.name}</div>
+                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '12px 14px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: s.grad }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, gap: 8 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.2, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.abbr}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {spb ? (
                         <>
-                          <div style={{ fontSize: 16, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
-                          {sc && <div style={{ fontSize: 11, color: t.textSec, marginTop: 2, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
+                          <div style={{ fontSize: 15, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
+                          {sc && <div style={{ fontSize: 10, color: t.textSec, marginTop: 2, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
                         </>
-                      ) : <div style={{ fontSize: 12, color: t.textSec }}>No data</div>}
+                      ) : <div style={{ fontSize: 11, color: t.textSec }}>No data</div>}
                     </div>
                   </div>
                   {data.length < 2 ? (
-                    <div style={{ fontSize: 12, color: t.textSec, textAlign: 'center', padding: '24px 0', background: t.surfaceAlt, borderRadius: 12, marginTop: 10, fontWeight: 500 }}>
+                    <div style={{ fontSize: 12, color: t.textSec, textAlign: 'center', padding: '18px 0', background: t.surfaceAlt, borderRadius: 10, marginTop: 8, fontWeight: 500 }}>
                       {data.length === 0 ? 'Not logged yet' : 'Log 1 more session'}
                     </div>
                   ) : (
-                    <div style={{ marginTop: 10 }}>
-                      <ResponsiveContainer width="100%" height={90}>
+                    <div style={{ marginTop: 8 }}>
+                      <ResponsiveContainer width="100%" height={72}>
                         <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                           <defs>
                             <linearGradient id={`grad-${s.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -3175,20 +3175,23 @@ function Progress({ workouts, pbs }) {
         </div>
       ) : (
         <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
             {STATIONS.map(s => (
               <button key={s.id} onClick={() => setSelected(s.id)} style={{
-                padding: '10px 16px', fontSize: 13, borderRadius: 999, cursor: 'pointer', fontWeight: 700, fontFamily: FONT,
+                padding: '8px 12px', fontSize: 12, borderRadius: 999, cursor: 'pointer', fontWeight: 700, fontFamily: FONT,
                 background: selected === s.id ? s.grad : t.surfaceAlt, color: selected === s.id ? '#fff' : t.textSec,
                 border: 'none', boxShadow: selected === s.id ? `0 4px 12px ${s.color}30` : 'none',
               }}>{s.abbr}</button>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-            <div><div style={{ fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: -0.5 }}>{station.name}</div><div style={{ fontSize: 13, color: t.textSec }}>{station.desc}</div></div>
-            {pb && <div style={{ marginLeft: 'auto', background: station.grad, color: '#fff', borderRadius: 14, padding: '12px 20px', textAlign: 'center', boxShadow: `0 8px 20px ${station.color}30` }}>
-              <div style={{ fontSize: 10, letterSpacing: 1.5, fontWeight: 800, textTransform: 'uppercase', opacity: 0.9 }}>PB</div>
-              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1 }}>{fmtTime(pb.time)}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 19, fontWeight: 800, color: t.text, letterSpacing: -0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{station.name}</div>
+              <div style={{ fontSize: 12, color: t.textSec, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{station.desc}</div>
+            </div>
+            {pb && <div style={{ background: station.grad, color: '#fff', borderRadius: 12, padding: '8px 14px', textAlign: 'center', boxShadow: `0 6px 16px ${station.color}25`, flexShrink: 0 }}>
+              <div style={{ fontSize: 9, letterSpacing: 1.5, fontWeight: 800, textTransform: 'uppercase', opacity: 0.9 }}>PB</div>
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.8 }}>{fmtTime(pb.time)}</div>
             </div>}
           </div>
           {chartData.length < 2 ? (
@@ -3384,7 +3387,7 @@ function TrainingPlan({ profile, workouts = [] }: any) {
       <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '14px 18px', marginBottom: 22, display: 'flex', gap: 14, alignItems: 'center', boxShadow: t.cardShadow }}>
         <Icon C={Calendar} size={26} color={ACC} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{plan.totalWeeks}-Week Plan → <CityLabel city={profile.eventCity} size={15} /></div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{plan.totalWeeks}-Week Plan → Hyrox {profile.eventCity}</div>
           <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>{planStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
           <div style={{ fontSize: 11, color: ACC, marginTop: 4, fontWeight: 600 }}>{usingDefault ? `Default ${profile.level} split — add a routine on Profile to personalize` : `Built on your routine (${profile.routine?.parsed?.days?.length || 0} days)`}</div>
         </div>
@@ -3678,7 +3681,7 @@ function InstallPrompt() {
   );
 }
 
-function Countdown({ eventDate }) {
+function Countdown({ eventDate, compact = false }: { eventDate: string; compact?: boolean }) {
   const [t, setT] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
   useEffect(() => {
     if (!eventDate) return;
@@ -3694,20 +3697,23 @@ function Countdown({ eventDate }) {
   }, [eventDate]);
 
   return (
-    <div style={{ display: 'flex', gap: 8, perspective: '300px' }}>
+    <div style={{ display: 'flex', gap: compact ? 5 : 8, perspective: '300px' }}>
       {[{ label: 'D', val: t.days }, { label: 'H', val: t.hours }, { label: 'M', val: t.mins }, { label: 'S', val: t.secs }].map(({ label, val }) => (
-        <FlipUnit key={label} value={val} label={label} />
+        <FlipUnit key={label} value={val} label={label} compact={compact} />
       ))}
     </div>
   );
 }
 
-function FlipUnit({ value, label }: { value: number; label: string }) {
+function FlipUnit({ value, label, compact = false }: { value: number; label: string; compact?: boolean }) {
   const display = String(value).padStart(2, '0');
+  const w = compact ? 30 : 38;
+  const h = compact ? 26 : 32;
+  const numSize = compact ? 17 : 22;
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{
-        position: 'relative', width: 38, height: 32, borderRadius: 7,
+        position: 'relative', width: w, height: h, borderRadius: 7,
         border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
         background: 'rgba(255,255,255,0.06)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 6px rgba(0,0,0,0.4)',
@@ -3716,12 +3722,12 @@ function FlipUnit({ value, label }: { value: number; label: string }) {
         <div
           key={display}
           className="card-flip"
-          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: ACC_BRIGHT, letterSpacing: '-0.5px', fontFamily: FONT }}
+          style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: numSize, fontWeight: 800, color: ACC_BRIGHT, letterSpacing: '-0.5px', fontFamily: FONT }}
         >
           {display}
         </div>
       </div>
-      <div style={{ fontSize: 9, color: '#9ca3af', letterSpacing: 1, marginTop: 5, fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: compact ? 8 : 9, color: '#9ca3af', letterSpacing: 1, marginTop: compact ? 3 : 5, fontWeight: 700 }}>{label}</div>
     </div>
   );
 }
@@ -3947,17 +3953,17 @@ export default function HyroxTracker() {
       {/* paddingTop adds env(safe-area-inset-top) so the header content sits
           below the iOS notch / status bar (apple-mobile-web-app-status-bar-style
           is black-translucent, so the app extends under the status bar). */}
-      <div style={{ background: t.headerBg, paddingTop: `calc(${isCompact ? 16 : 28}px + env(safe-area-inset-top))`, paddingRight: isCompact ? 14 : 26, paddingBottom: isCompact ? 14 : 24, paddingLeft: isCompact ? 14 : 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
+      <div style={{ background: t.headerBg, paddingTop: `calc(${isCompact ? 14 : 26}px + env(safe-area-inset-top))`, paddingRight: isCompact ? 12 : 24, paddingBottom: isCompact ? 12 : 22, paddingLeft: isCompact ? 14 : 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isCompact ? 10 : 16, position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${ACC} 30%, ${ACC} 70%, transparent)`, opacity: 0.7 }} />
-        <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 2 : 3, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 1.8 : 2.5, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             <CityLabel city={profile.eventCity} size={isCompact ? 11 : 12} />
           </div>
-          <div style={{ fontSize: isCompact ? 24 : 32, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1 }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
-          <div style={{ fontSize: isCompact ? 11 : 12, color: '#9ca3af', marginTop: isCompact ? 4 : 6, fontWeight: 500, letterSpacing: 0.3 }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          <div style={{ fontSize: isCompact ? 22 : 30, fontWeight: 900, color: '#fff', letterSpacing: -0.8, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
+          <div style={{ fontSize: isCompact ? 11 : 12, color: '#9ca3af', marginTop: isCompact ? 4 : 6, fontWeight: 500, letterSpacing: 0.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', isCompact ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, position: 'relative' }}>
-          <Countdown eventDate={profile.eventDate} />
+        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
+          <Countdown eventDate={profile.eventDate} compact={isCompact} />
         </div>
       </div>
 
