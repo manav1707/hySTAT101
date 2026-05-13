@@ -1769,8 +1769,8 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
         <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6 }}>Leaderboard</div>
       </div>
 
-      <div style={{ marginBottom: 22 }}>
-        <div style={{ display: 'grid', gap: 10 }}>
+      <div>
+        <div style={{ display: 'grid', gap: 8 }}>
           {leaderboard.map((a, i) => {
             const rank = i + 1;
             const isMe = a.isMe;
@@ -1778,84 +1778,84 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
             return (
               <div key={a.userId} style={{
                 background: isMe ? `linear-gradient(135deg, ${ACC}15 0%, ${ACC}05 100%)` : t.card,
-                border: `1.5px solid ${isMe ? ACC : t.border}`,
-                borderRadius: 16, padding: '12px 14px',
+                border: `1px solid ${isMe ? ACC : t.border}`,
+                borderRadius: 12, padding: '10px 12px',
                 display: 'flex', alignItems: 'center', gap: 10,
-                boxShadow: isMe ? '0 8px 24px rgba(232,69,27,0.12)' : t.cardShadow,
+                boxShadow: isMe ? `0 4px 14px ${ACC}20` : t.cardShadow,
                 minWidth: 0, overflow: 'hidden',
               }}>
-                <div style={{ minWidth: 32, textAlign: 'center', flexShrink: 0 }}>
-                  {rank <= 3 ? <Icon C={medals[rank - 1]} size={22} color={t.text} /> : <span style={{ fontSize: 17, fontWeight: 800, color: t.textSec }}>#{rank}</span>}
+                <div style={{ minWidth: 26, textAlign: 'center', flexShrink: 0 }}>
+                  {rank <= 3 ? <Icon C={medals[rank - 1]} size={18} color={t.text} /> : <span style={{ fontSize: 14, fontWeight: 800, color: t.textSec }}>#{rank}</span>}
                 </div>
                 <div style={{
-                  width: 40, height: 40, borderRadius: 20, flexShrink: 0,
+                  width: 32, height: 32, borderRadius: 16, flexShrink: 0,
                   background: isMe ? GRAD.orange : t.surfaceAlt,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: isMe ? '0 4px 12px rgba(232,69,27,0.3)' : 'none',
-                }}><Icon C={TypeIcon} size={20} color={isMe ? '#fff' : t.text} /></div>
+                }}><Icon C={TypeIcon} size={16} color={isMe ? '#fff' : t.text} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {a.name}
-                    {isMe && <span style={{ fontSize: 10, background: GRAD.orange, color: '#fff', padding: '3px 8px', borderRadius: 999, fontWeight: 800 }}>YOU</span>}
+                    {isMe && <span style={{ fontSize: 9, background: ACC, color: '#000', padding: '2px 6px', borderRadius: 999, fontWeight: 800, letterSpacing: 0.3 }}>YOU</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: t.textSec, marginTop: 2, lineHeight: 1.4 }}>Hyrox {a.eventCity} · {a.totalSessions || 0} sessions</div>
+                  <div style={{ fontSize: 11, color: t.textSec, marginTop: 2, lineHeight: 1.35 }}>Hyrox {a.eventCity} · {a.totalSessions || 0} sessions</div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, background: GRAD.orange, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1, letterSpacing: -0.5 }}>{(a.cumulativeScore || 0).toFixed(1)}</div>
-                  <div style={{ fontSize: 10, color: t.textSec, marginTop: 3, fontWeight: 500 }}>/ 80</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: ACC, lineHeight: 1, letterSpacing: -0.3 }}>{(a.cumulativeScore || 0).toFixed(1)}</div>
+                  <div style={{ fontSize: 9, color: t.textSec, marginTop: 3, fontWeight: 500, letterSpacing: 0.5 }}>/ 80</div>
                 </div>
-                {!isMe && <button onClick={() => removeFriend(a.userId)} style={{ background: 'none', border: 'none', color: t.borderInput, cursor: 'pointer', fontSize: 20, padding: 2, fontFamily: FONT, flexShrink: 0 }}>×</button>}
+                {!isMe && <button onClick={() => removeFriend(a.userId)} style={{ background: 'none', border: 'none', color: t.borderInput, cursor: 'pointer', fontSize: 18, padding: 2, fontFamily: FONT, flexShrink: 0 }}>×</button>}
               </div>
             );
           })}
         </div>
       </div>
 
-      <div style={{ marginBottom: 18 }}>
-        <SectionTitle accent={ACC}>Add a Friend</SectionTitle>
-        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 14, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
-          <div style={{ fontSize: 12, color: t.textSec, marginBottom: 10 }}>Enter your friend's 6-character Athlete ID:</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
-              style={{ flex: 1, minWidth: 0, padding: '12px', fontSize: 17, fontWeight: 700, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, textAlign: 'center', textTransform: 'uppercase' }} />
-            <button onClick={addFriend} disabled={adding || !addId} style={{
-              padding: '12px 16px', fontSize: 13, fontWeight: 700,
-              background: adding || !addId ? t.borderInput : GRAD.orange, color: '#fff', border: 'none', borderRadius: 10,
-              cursor: adding || !addId ? 'not-allowed' : 'pointer', fontFamily: FONT, flexShrink: 0,
-              boxShadow: adding || !addId ? 'none' : '0 4px 12px rgba(232,69,27,0.3)',
-            }}>{adding ? '...' : 'ADD'}</button>
-          </div>
-          {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
+      <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Add a Friend
+      </div>
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 12, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ fontSize: 12, color: t.textSec, marginBottom: 10 }}>Enter your friend's 6-character Athlete ID:</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
+            style={{ flex: 1, minWidth: 0, padding: '11px', fontSize: 16, fontWeight: 700, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, textAlign: 'center', textTransform: 'uppercase' }} />
+          <button onClick={addFriend} disabled={adding || !addId} style={{
+            padding: '11px 14px', fontSize: 12, fontWeight: 700,
+            background: adding || !addId ? t.borderInput : ACC, color: adding || !addId ? '#fff' : '#000', border: 'none', borderRadius: 10,
+            cursor: adding || !addId ? 'not-allowed' : 'pointer', fontFamily: FONT, flexShrink: 0, letterSpacing: 0.3,
+          }}>{adding ? '...' : 'ADD'}</button>
         </div>
+        {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
       </div>
 
-      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: 14, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
-        <div style={{ fontSize: 11, color: t.textSec, marginBottom: 8, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' }}>Your Athlete ID</div>
+      <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Your Athlete ID
+      </div>
+      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 12, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, color: t.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.userId}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, color: t.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.userId}</div>
           <button onClick={copyMyId} style={{
-            padding: '8px 14px', fontSize: 11, fontWeight: 700,
+            padding: '7px 12px', fontSize: 11, fontWeight: 700,
             background: copied ? ACC : t.surfaceAlt, color: copied ? '#000' : t.text,
             border: `1px solid ${copied ? ACC : t.border}`, borderRadius: 999,
             cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3, flexShrink: 0,
-          }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon C={Check} size={12} color="#000" /> COPIED</span> : 'COPY ID'}</button>
+          }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon C={Check} size={11} color="#000" /> COPIED</span> : 'COPY ID'}</button>
         </div>
         <div style={{ fontSize: 11, color: t.textSec, marginTop: 8 }}>Share with friends so they can add you.</div>
       </div>
 
+      <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Your Rank
+      </div>
       <div style={{
-        background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '12px 14px', marginTop: 12,
+        background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 12px',
         boxShadow: t.cardShadow,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
       }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 10, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Rank</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 24, fontWeight: 900, color: t.text, letterSpacing: -0.8, lineHeight: 1 }}>#{myRank}</span>
-            <span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
-          </div>
+        <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 22, fontWeight: 900, color: t.text, letterSpacing: -0.8, lineHeight: 1 }}>#{myRank}</span>
+          <span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
         </div>
-        <Icon C={myRank === 1 ? Trophy : Award} size={22} color={ACC} />
+        <Icon C={myRank === 1 ? Trophy : Award} size={20} color={ACC} />
       </div>
     </div>
   );
@@ -3112,15 +3112,14 @@ function Progress({ workouts, pbs }) {
 
       {view === 'all' ? (
         <div>
-          <SectionTitle accent={ACC}>All Stations Progression</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
             {STATIONS.map(s => {
               const data = getDataFor(s.id);
               const spb = pbs[s.id];
               const sc = computeStationScore(s.id, workouts, spb);
               return (
-                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 12px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: s.grad }} />
+                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: '9px 11px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: s.grad }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2, gap: 8 }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.abbr}</div>
@@ -3129,19 +3128,19 @@ function Progress({ workouts, pbs }) {
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {spb ? (
                         <>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
-                          {sc && <div style={{ fontSize: 10, color: t.textSec, marginTop: 1, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
+                          <div style={{ fontSize: 13, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
+                          {sc && <div style={{ fontSize: 9, color: t.textSec, marginTop: 1, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
                         </>
                       ) : <div style={{ fontSize: 11, color: t.textSec }}>No data</div>}
                     </div>
                   </div>
                   {data.length < 2 ? (
-                    <div style={{ fontSize: 11, color: t.textSec, textAlign: 'center', padding: '14px 0', background: t.surfaceAlt, borderRadius: 10, marginTop: 6, fontWeight: 500 }}>
+                    <div style={{ fontSize: 10, color: t.textSec, textAlign: 'center', padding: '10px 0', background: t.surfaceAlt, borderRadius: 8, marginTop: 4, fontWeight: 500 }}>
                       {data.length === 0 ? 'Not logged yet' : 'Log 1 more session'}
                     </div>
                   ) : (
-                    <div style={{ marginTop: 6 }}>
-                      <ResponsiveContainer width="100%" height={60}>
+                    <div style={{ marginTop: 4 }}>
+                      <ResponsiveContainer width="100%" height={48}>
                         <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                           <defs>
                             <linearGradient id={`grad-${s.id}`} x1="0" y1="0" x2="0" y2="1">
