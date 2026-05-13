@@ -142,14 +142,16 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     /* Hide scrollbar on the tab bar while keeping it scrollable on narrow widths */
     .hyrox-tabs::-webkit-scrollbar { display: none; height: 0; width: 0; }
     .hyrox-tabs { scrollbar-width: none; -ms-overflow-style: none; }
-    /* Each tab panel is its own layout/paint scope. contain:paint lets the
-       browser treat each panel as an isolated paint boundary (often promoting
-       it to a GPU layer), so flipping visibility is a composite-only step
-       instead of a repaint of heavy DOM (Stats charts, Plan grid). Horizontal
-       padding lives here (driven by --panel-pad-x set on the container) so
-       active (relative, content-box) and inactive (absolute, padding-box)
-       panels share an effective width and don't reflow content on switch. */
-    .hyrox-tab-panel { contain: layout style paint; padding-inline: var(--panel-pad-x); animation: hyrox-panel-in 220ms cubic-bezier(0.2, 0, 0, 1); }
+    /* Each tab panel scopes its own layout so a heavy subtree (Stats charts,
+       Plan grid) doesn't force the document tree to reflow on tab switch.
+       We deliberately do NOT include "paint" in "contain" — paint creates
+       a containing block for fixed-position descendants, which would anchor
+       any modal/sheet rendered inside the panel (EditWorkoutSheet, Coach
+       insight, etc.) to the panel's top instead of the viewport, so a modal
+       opened while scrolled down would render off-screen above the user.
+       Horizontal padding lives here (driven by --panel-pad-x on the container)
+       so panel content widths stay stable across tab switches. */
+    .hyrox-tab-panel { contain: layout style; padding-inline: var(--panel-pad-x); animation: hyrox-panel-in 220ms cubic-bezier(0.2, 0, 0, 1); }
     @keyframes hyrox-panel-in {
       from { opacity: 0; transform: translateY(6px); }
       to   { opacity: 1; transform: translateY(0); }
