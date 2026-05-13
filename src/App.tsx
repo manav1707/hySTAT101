@@ -1994,24 +1994,40 @@ function PasteParser({ onImport, lbl, inp }) {
     // so the right EQUIV entry wins. Hyrox direct stations come before generic
     // gym translations because pastes from the Week plan use station names.
     const keywords: Array<[string, string]> = [
-      ['burpee bj', 'burpeeBJ_direct'], ['burpee broad', 'burpeeBJ_direct'], ['broad jump', 'burpeeBJ_direct'],
+      // Direct Hyrox stations — must come first because their multi-word
+      // forms ('sandbag lunge', 'burpee bj', 'wall ball') would otherwise
+      // be caught by the single-word fallbacks below ('lunge', 'burpee').
+      ['burpee bj', 'burpeeBJ_direct'], ['burpee broad', 'burpeeBJ_direct'], ['burpee bbj', 'burpeeBJ_direct'],
+      ['broad jump', 'burpeeBJ_direct'], ['box jump', 'burpeeBJ_direct'], ['box step', 'burpeeBJ_direct'],
       ['sandbag lunge', 'sandbaglunges_direct'],
       ['sled push', 'sledpush_direct'],
       ['sled pull', 'sledpull_direct'],
-      ['ski erg', 'skierg_direct'], ['skierg', 'skierg_direct'],
-      ['row erg', 'rowing_direct'], ['rowing', 'rowing_direct'],
-      ['wall ball', 'wallballs_direct'], ['wallball', 'wallballs_direct'],
+      ['ski erg', 'skierg_direct'], ['skierg', 'skierg_direct'], ['ski-erg', 'skierg_direct'],
+      ['row erg', 'rowing_direct'], ['rowerg', 'rowing_direct'], ['c2 row', 'rowing_direct'], ['concept2', 'rowing_direct'], ['concept 2', 'rowing_direct'], ['rowing', 'rowing_direct'],
+      ['wall ball', 'wallballs_direct'], ['wallball', 'wallballs_direct'], ['wbs', 'wallballs_direct'],
+
+      // Gym translations (substring matching: 'thruster' catches 'DB Thrusters',
+      // 'squat' catches 'Goblet/Front/Back/Air Squat', etc.)
+      ['db thruster', 'thrusters'], ['dumbbell thruster', 'thrusters'],
+      ['manmaker', 'thrusters'], ['man maker', 'thrusters'], ['devil press', 'thrusters'],
       ['thruster', 'thrusters'],
+      ['romanian deadlift', 'deadlifts'], ['rdl', 'deadlifts'], ['sumo deadlift', 'deadlifts'],
+      ['kettlebell swing', 'deadlifts'], ['kb swing', 'deadlifts'],
+      ['deadlift', 'deadlifts'],
       ['squat', 'squats'],
       ['bench', 'bench'],
-      ['deadlift', 'deadlifts'],
-      ['bent row', 'rows'], ['barbell row', 'rows'],
+      ['bent row', 'rows'], ['barbell row', 'rows'], ['db row', 'rows'], ['dumbbell row', 'rows'],
       ["farmer's", 'farmers'], ['farmers carry', 'farmers'], ['farmer', 'farmers'],
+      ['walking lunge', 'lunges'], ['reverse lunge', 'lunges'], ['forward lunge', 'lunges'],
+      ['split squat', 'lunges'], ['bulgarian', 'lunges'],
       ['lunge', 'lunges'],
       ['burpee', 'burpees'],
-      ['interval', 'intervals'],
-      ['long run', 'longrun'], ['z2', 'longrun'],
-      ['cycle', 'cycle'], ['bike', 'cycle'],
+
+      // Cardio
+      ['intervals', 'intervals'], ['interval', 'intervals'], ['sprint', 'intervals'], ['fartlek', 'intervals'],
+      ['long run', 'longrun'], ['easy run', 'longrun'], ['tempo run', 'longrun'], ['z2', 'longrun'], ['jog', 'longrun'],
+      ['cycle', 'cycle'], ['bike', 'cycle'], ['spin', 'cycle'],
+
       // Fallback: bare 'row' in a Hyrox context almost always means the erg.
       ['row', 'rowing_direct'],
     ];
@@ -2743,9 +2759,9 @@ Write a short note that acknowledges ONE specific thing from today and suggests 
   }, []);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px', paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)', overflowY: 'auto' }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: t.card, borderRadius: 26, padding: 30, maxWidth: 520, width: '100%',
+        background: t.card, borderRadius: 22, padding: 22, maxWidth: 520, width: '100%',
         boxShadow: '0 30px 80px rgba(0,0,0,0.4)', border: `1px solid ${t.border}`,
         position: 'relative', overflow: 'hidden',
       }}>
