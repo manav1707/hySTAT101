@@ -149,7 +149,19 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
        padding lives here (driven by --panel-pad-x set on the container) so
        active (relative, content-box) and inactive (absolute, padding-box)
        panels share an effective width and don't reflow content on switch. */
-    .hyrox-tab-panel { contain: layout style paint; padding-inline: var(--panel-pad-x); }
+    .hyrox-tab-panel { contain: layout style paint; padding-inline: var(--panel-pad-x); animation: hyrox-panel-in 220ms cubic-bezier(0.2, 0, 0, 1); }
+    @keyframes hyrox-panel-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hyrox-tab-panel { animation: none; }
+    }
+    @keyframes hyrox-streak-pulse {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(1.15); }
+    }
+    .streak-flame { animation: hyrox-streak-pulse 1.8s ease-in-out infinite; display: inline-block; }
   `;
   document.head.appendChild(style);
 }
@@ -1569,6 +1581,38 @@ function WorkoutSummary({ workout, compact }) {
   );
 }
 
+// Compute current + longest training streak from workouts. A "streak day" is
+// any day with at least one workout; consecutive days = streak. "Current" runs
+// backward from today (or yesterday — we forgive today so the streak doesn't
+// reset at midnight before the user has a chance to log).
+function computeStreaks(workouts: any[]): { current: number; longest: number } {
+  if (!workouts?.length) return { current: 0, longest: 0 };
+  const days = new Set<string>();
+  for (const w of workouts) if (w?.date) days.add(w.date);
+  const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  // current streak
+  let current = 0;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let cursor = new Date(today);
+  // forgive today: if no workout today but yesterday counts, start there
+  if (!days.has(ymd(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(ymd(cursor))) {
+    current += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  // longest streak — scan sorted unique days
+  const sorted = Array.from(days).sort();
+  let longest = 0, run = 0, prev: Date | null = null;
+  for (const d of sorted) {
+    const cur = new Date(d);
+    if (prev && (cur.getTime() - prev.getTime()) === 86400000) run += 1;
+    else run = 1;
+    if (run > longest) longest = run;
+    prev = cur;
+  }
+  return { current, longest };
+}
+
 function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout }) {
   const { t } = useTheme();
   const [editing, setEditing] = useState<any>(null);
@@ -1582,6 +1626,7 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const scorePct = cumulative / 80 * 100;
+  const streaks = computeStreaks(workouts);
 
   return (
     <div>
@@ -1594,6 +1639,35 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
         </div>
       </div>
 
+      {workouts.length === 0 && (
+        <div style={{ background: t.card, border: `1.5px dashed ${ACC}50`, borderRadius: 16, padding: '36px 22px', textAlign: 'center', marginBottom: 22 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, borderRadius: '50%', background: `${ACC}15`, marginBottom: 14 }}>
+            <Icon C={Flame} size={28} color={ACC} />
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: t.text, marginBottom: 6, letterSpacing: -0.3 }}>Log your first session</div>
+          <div style={{ fontSize: 13, color: t.textSec, lineHeight: 1.5, marginBottom: 18, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            Track Hyrox stations or paste a gym routine — your score, projected finish, and weakest station all unlock once you log.
+          </div>
+          <button onClick={() => setTab('log')} style={{
+            padding: '13px 24px', fontSize: 13, fontWeight: 800,
+            background: ACC, color: '#000', border: 'none', borderRadius: 999,
+            cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
+            boxShadow: `0 8px 22px ${ACC}40`,
+          }}>+ LOG WORKOUT</button>
+        </div>
+      )}
+
+      {workouts.length > 0 && streaks.current > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 14px', marginBottom: 14 }}>
+          <span className="streak-flame" style={{ fontSize: 18, lineHeight: 1 }}>🔥</span>
+          <div style={{ fontSize: 13, color: t.text, fontWeight: 700 }}>{streaks.current}-day streak</div>
+          {streaks.longest > streaks.current && (
+            <div style={{ fontSize: 11, color: t.textSec, marginLeft: 'auto', fontWeight: 500 }}>longest {streaks.longest}d</div>
+          )}
+        </div>
+      )}
+
+      {workouts.length > 0 && <>
       {/* HERO SCORE CARD */}
       <div style={{
         background: GRAD.darkHero, color: '#fff', borderRadius: 16, padding: '18px 20px', marginBottom: 18,
@@ -1695,11 +1769,40 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
         </div>
       </div>
 
+      {workouts.length > 1 && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '0 0 12px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Recent Sessions
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {workouts.slice(0, -1).slice(-5).reverse().map((w: any) => {
+              const stationCount = Object.values(w.stations || {}).filter((s: any) => s?.time).length + (w.translated?.length || 0);
+              const dt = new Date(w.date);
+              const label = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+              return (
+                <button key={w.id} onClick={() => setEditing(w)} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                  background: t.card, border: `1px solid ${t.border}`, borderRadius: 12,
+                  padding: '10px 12px', cursor: 'pointer', fontFamily: FONT, textAlign: 'left',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{label}</div>
+                    <div style={{ fontSize: 11, color: t.textSec, marginTop: 2 }}>{stationCount} element{stationCount === 1 ? '' : 's'}{w.runs?.count ? ` · ${w.runs.count} run${w.runs.count === 1 ? '' : 's'}` : ''}</div>
+                  </div>
+                  <span style={{ fontSize: 18, color: t.textSec, lineHeight: 1, paddingRight: 4 }}>⋯</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <button onClick={() => setTab('log')} style={{
         background: GRAD.orange, color: '#fff', border: 'none', borderRadius: 18,
         padding: '20px', fontSize: 17, fontWeight: 800, cursor: 'pointer', width: '100%',
         fontFamily: FONT, letterSpacing: 0.3, boxShadow: '0 12px 32px rgba(232,69,27,0.35)',
       }}>+ LOG WORKOUT</button>
+      </>}
     </div>
   );
 }
@@ -1768,6 +1871,22 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
         <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{leaderboard.length} {leaderboard.length === 1 ? 'athlete' : 'athletes'} · You're #{myRank}</div>
         <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6 }}>Leaderboard</div>
       </div>
+
+      {leaderboard.length === 1 && (
+        <div style={{ background: t.card, border: `1.5px dashed ${ACC}50`, borderRadius: 16, padding: '24px 20px', marginBottom: 18, textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: `${ACC}15`, marginBottom: 12 }}>
+            <Icon C={Users} size={24} color={ACC} />
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: t.text, marginBottom: 4, letterSpacing: -0.3 }}>Add a Hyrox crew</div>
+          <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.5, marginBottom: 14, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            Share your Athlete ID with a training partner — once they add you, you'll appear on each other's leaderboards.
+          </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: t.surfaceAlt, borderRadius: 999, padding: '8px 14px', border: `1px solid ${t.border}` }}>
+            <span style={{ fontFamily: 'SF Mono, Monaco, monospace', fontSize: 15, fontWeight: 800, letterSpacing: 3, color: t.text }}>{profile.userId}</span>
+            <button onClick={copyMyId} style={{ background: 'none', border: 'none', color: copied ? ACC : t.textSec, cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: FONT, letterSpacing: 0.5 }}>{copied ? 'COPIED' : 'COPY'}</button>
+          </div>
+        </div>
+      )}
 
       <div>
         <div style={{ display: 'grid', gap: 8 }}>
@@ -3093,6 +3212,26 @@ function Progress({ workouts, pbs }) {
     </div>
   );
 
+  if (workouts.length === 0) {
+    return (
+      <div>
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>Per-station progression</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6 }}>Stats</div>
+        </div>
+        <div style={{ background: t.card, border: `1.5px dashed ${ACC}50`, borderRadius: 16, padding: '36px 22px', textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, borderRadius: '50%', background: `${ACC}15`, marginBottom: 14 }}>
+            <Icon C={BarChart3} size={28} color={ACC} />
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: t.text, marginBottom: 6, letterSpacing: -0.3 }}>Stats unlock with data</div>
+          <div style={{ fontSize: 13, color: t.textSec, lineHeight: 1.5, maxWidth: 300, marginLeft: 'auto', marginRight: 'auto' }}>
+            Log <b style={{ color: t.text }}>two or more sessions</b> on any station and we'll start charting your progression here.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
@@ -3878,7 +4017,15 @@ export default function HyroxTracker() {
   // Stable ref while workouts unchanged so memoized panels can skip re-render on tab switch.
   const pbs = useMemo(() => computePBs(workouts), [workouts]);
 
-  if (loading) return <div style={{ fontFamily: FONT, padding: '3rem', color: t.textSec, textAlign: 'center', fontSize: 16, background: t.bg, minHeight: '100vh' }}>Loading...</div>;
+  if (loading) return (
+    <div style={{ fontFamily: FONT, background: t.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: ACC, boxShadow: `0 0 12px ${ACC}`, animation: 'pulse 1.4s ease-in-out infinite' }} />
+        <div style={{ fontSize: 11, letterSpacing: 3, color: ACC, fontWeight: 800, textTransform: 'uppercase' }}>Hyrox Tracker</div>
+      </div>
+      <div style={{ fontSize: 12, color: t.textSec, letterSpacing: 0.3 }}>Loading your training…</div>
+    </div>
+  );
 
   if (!profile) {
     return (
