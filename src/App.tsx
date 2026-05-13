@@ -174,6 +174,68 @@ const PRESET_EVENTS = [
   { city: 'London', country: 'UK', date: '2027-02-14' },
 ];
 
+// Simplified landmark silhouettes per Hyrox host city — rendered inline before
+// "Hyrox <city>" wherever the label appears. Stroke uses currentColor so each
+// icon inherits the surrounding text colour (lime in the header, neutral
+// elsewhere). Falls back to plain "Hyrox <city>" with no icon for unmapped
+// cities (e.g. a custom event city).
+const SVG = (paths: React.ReactNode, label: string) =>
+  function LandmarkIcon({ size = 14 }: { size?: number }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-label={label} style={{ flexShrink: 0 }}>
+        {paths}
+      </svg>
+    );
+  };
+
+const LANDMARK_ICONS: Record<string, React.FC<{ size?: number }>> = {
+  Mumbai: SVG(<>
+    <path d="M3 22V11h18v11"/>
+    <path d="M3 11c0-3 4-5 9-5s9 2 9 5"/>
+    <path d="M9 22v-6a3 3 0 0 1 6 0v6"/>
+  </>, 'Gateway of India'),
+  Delhi: SVG(<>
+    <path d="M3 22V9h2V7h2v2h2V7h2v2h2V7h2v2h2V7h2v2h2v13"/>
+    <path d="M10 22v-5a2 2 0 0 1 4 0v5"/>
+  </>, 'Red Fort'),
+  Bangalore: SVG(<>
+    <path d="M12 4v-2"/>
+    <path d="M7 10a5 5 0 0 1 10 0"/>
+    <path d="M3 22v-12h18v12"/>
+    <path d="M6 22v-8M18 22v-8"/>
+  </>, 'Vidhana Soudha'),
+  Dubai: SVG(<>
+    <path d="M12 2v3"/>
+    <path d="M10.5 5h3v3h-3z"/>
+    <path d="M9.5 8h5v3h-5z"/>
+    <path d="M8.5 11h7v3h-7z"/>
+    <path d="M7 14h10v8H7z"/>
+  </>, 'Burj Khalifa'),
+  Singapore: SVG(<>
+    <rect x="3" y="9" width="3" height="13"/>
+    <rect x="10.5" y="9" width="3" height="13"/>
+    <rect x="18" y="9" width="3" height="13"/>
+    <path d="M2 9h20l-2-3H4z"/>
+  </>, 'Marina Bay Sands'),
+  London: SVG(<>
+    <path d="M12 2L7 6h10z"/>
+    <path d="M8 6v16h8V6"/>
+    <circle cx="12" cy="11" r="2.2"/>
+    <path d="M12 11v-1.5M12 11h1.3"/>
+  </>, 'Big Ben'),
+};
+
+function CityLabel({ city, size = 14 }: { city: string | undefined | null; size?: number }) {
+  if (!city) return null;
+  const LM = LANDMARK_ICONS[city];
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      {LM && <LM size={size} />}
+      <span>Hyrox {city}</span>
+    </span>
+  );
+}
+
 const EQUIV = [
   { id: 'thrusters', name: 'DB Thrusters', station: 'wallballs', match: 95,
     fields: [{ k: 'sets', l: 'Sets', d: 5 }, { k: 'reps', l: 'Reps', d: 15 }, { k: 'weight', l: 'kg/DB', d: 15 }],
@@ -1280,7 +1342,7 @@ function ProfileView({ profile, workouts, onSave, onClearData, onReplaceData }: 
           </div>
           <div style={{ marginTop: 20, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>Hyrox {profile.eventCity}</div>
+              <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}><CityLabel city={profile.eventCity} size={15} /></div>
               <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -1731,7 +1793,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
                     {a.name}
                     {isMe && <span style={{ fontSize: 10, background: GRAD.orange, color: '#fff', padding: '3px 8px', borderRadius: 999, fontWeight: 800 }}>YOU</span>}
                   </div>
-                  <div style={{ fontSize: 13, color: t.textSec, marginTop: 2 }}>Hyrox {a.eventCity} · {a.totalSessions || 0} sessions</div>
+                  <div style={{ fontSize: 13, color: t.textSec, marginTop: 2 }}><CityLabel city={a.eventCity} size={13} /> · {a.totalSessions || 0} sessions</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 24, fontWeight: 800, background: GRAD.orange, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1, letterSpacing: -0.5 }}>{(a.cumulativeScore || 0).toFixed(1)}</div>
@@ -3317,7 +3379,7 @@ function TrainingPlan({ profile, workouts = [] }: any) {
       <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '14px 18px', marginBottom: 22, display: 'flex', gap: 14, alignItems: 'center', boxShadow: t.cardShadow }}>
         <Icon C={Calendar} size={26} color={ACC} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{plan.totalWeeks}-Week Plan → Hyrox {profile.eventCity}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: t.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{plan.totalWeeks}-Week Plan → <CityLabel city={profile.eventCity} size={15} /></div>
           <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>{planStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
           <div style={{ fontSize: 11, color: ACC, marginTop: 4, fontWeight: 600 }}>{usingDefault ? `Default ${profile.level} split — add a routine on Profile to personalize` : `Built on your routine (${profile.routine?.parsed?.days?.length || 0} days)`}</div>
         </div>
@@ -3883,9 +3945,8 @@ export default function HyroxTracker() {
       <div style={{ background: t.headerBg, paddingTop: `calc(${isCompact ? 16 : 28}px + env(safe-area-inset-top))`, paddingRight: isCompact ? 14 : 26, paddingBottom: isCompact ? 14 : 24, paddingLeft: isCompact ? 14 : 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${ACC} 30%, ${ACC} 70%, transparent)`, opacity: 0.7 }} />
         <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 2 : 3, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACC, boxShadow: `0 0 8px ${ACC}` }} />
-            Hyrox · {profile.eventCity}
+          <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 2 : 3, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>
+            <CityLabel city={profile.eventCity} size={isCompact ? 11 : 12} />
           </div>
           <div style={{ fontSize: isCompact ? 24 : 32, fontWeight: 900, color: '#fff', letterSpacing: -1, lineHeight: 1 }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
           <div style={{ fontSize: isCompact ? 11 : 12, color: '#9ca3af', marginTop: isCompact ? 4 : 6, fontWeight: 500, letterSpacing: 0.3 }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
