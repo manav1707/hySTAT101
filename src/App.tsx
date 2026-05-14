@@ -192,6 +192,40 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
       50%      { transform: scale(1.15); }
     }
     .streak-flame { animation: hyrox-streak-pulse 1.8s ease-in-out infinite; display: inline-block; }
+    /* Station-icon animations — each station has a small motion loop
+       evoking the movement. All ~1s, GPU-friendly transforms only.
+       Two-frame swaps (run/row/lunges) use opacity steps. */
+    @keyframes stn-swap   { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+    @keyframes stn-skiArm { 0%, 100% { transform: translateY(-1.5px); } 50% { transform: translateY(2px); } }
+    @keyframes stn-skiCord{ 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.55); } }
+    @keyframes stn-pushX  { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1.5px); } }
+    @keyframes stn-pullX  { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-1.5px); } }
+    @keyframes stn-rope   { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.75); } }
+    @keyframes stn-burpee { 0%, 100% { transform: translateY(0) scaleY(1); } 40% { transform: translateY(2.5px) scaleY(0.85); } 70% { transform: translateY(-3px) scaleY(1.05); } }
+    @keyframes stn-bob    { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+    @keyframes stn-wbBall { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    @keyframes stn-wbSquat{ 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px) scaleY(1.05); } }
+    .stn-runA   { animation: stn-swap 0.7s steps(1) infinite; }
+    .stn-runB   { animation: stn-swap 0.7s steps(1) infinite reverse; }
+    .stn-rowA   { animation: stn-swap 0.9s steps(1) infinite; }
+    .stn-rowB   { animation: stn-swap 0.9s steps(1) infinite reverse; }
+    .stn-lungeA { animation: stn-swap 1.0s steps(1) infinite; }
+    .stn-lungeB { animation: stn-swap 1.0s steps(1) infinite reverse; }
+    .stn-skiArm { animation: stn-skiArm 1.1s ease-in-out infinite; transform-origin: 16px 11px; transform-box: fill-box; }
+    .stn-skiCord{ animation: stn-skiCord 1.1s ease-in-out infinite; transform-origin: 16px 2px; transform-box: fill-box; }
+    .stn-pushFig{ animation: stn-pushX 1.0s ease-in-out infinite; }
+    .stn-pullFig{ animation: stn-pullX 1.0s ease-in-out infinite; }
+    .stn-rope   { animation: stn-rope 1.0s ease-in-out infinite; transform-origin: 6px 17px; transform-box: fill-box; }
+    .stn-burpee { animation: stn-burpee 1.2s ease-in-out infinite; transform-origin: 16px 28px; transform-box: fill-box; }
+    .stn-bob    { animation: stn-bob 0.9s ease-in-out infinite; }
+    .stn-wbBall { animation: stn-wbBall 1.2s ease-in-out infinite; transform-origin: 16px 12px; transform-box: fill-box; }
+    .stn-wbFig  { animation: stn-wbSquat 1.2s ease-in-out infinite; transform-origin: 16px 30px; transform-box: fill-box; }
+    @media (prefers-reduced-motion: reduce) {
+      .stn-runA, .stn-runB, .stn-rowA, .stn-rowB, .stn-lungeA, .stn-lungeB,
+      .stn-skiArm, .stn-skiCord, .stn-pushFig, .stn-pullFig, .stn-rope,
+      .stn-burpee, .stn-bob, .stn-wbBall, .stn-wbFig { animation: none; }
+      .stn-runB, .stn-rowB, .stn-lungeB { opacity: 0; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -1050,6 +1084,135 @@ function Pill({ color, grad, children, size = 'md' }: any) {
   return <span style={{ background: grad || color + '18', color: grad ? '#fff' : color, fontSize: s.fs, fontWeight: 700, padding: s.p, borderRadius: 999, letterSpacing: 0.3, whiteSpace: 'nowrap', display: 'inline-block' }}>{children}</span>;
 }
 
+// Animated stick-figure pictogram for each Hyrox station (plus 'run').
+// Renders an SVG that inherits currentColor; small CSS-keyframe loop suggests
+// the movement. Pair next to a Pill so the colored gradient stays as the
+// station's identity while the icon gives a quick visual read.
+function StationIcon({ id, size = 22 }: { id: string; size?: number }) {
+  const svgProps = {
+    width: size, height: size, viewBox: '0 0 32 32', fill: 'none',
+    stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const, style: { flexShrink: 0, display: 'block' },
+    'aria-hidden': true,
+  };
+  const head = (cx: number, cy: number, r = 2.2) => <circle cx={cx} cy={cy} r={r} fill="currentColor" />;
+  switch (id) {
+    case 'run':
+      return (
+        <svg {...svgProps}>
+          <g className="stn-runA">
+            {head(17, 5)}<path d="M17 8 L15 17"/><path d="M15 17 L20 23"/><path d="M15 17 L11 23"/>
+            <path d="M15.5 11 L20 8"/><path d="M15.5 11 L11 14"/>
+          </g>
+          <g className="stn-runB">
+            {head(17, 5)}<path d="M17 8 L15 17"/><path d="M15 17 L11 23"/><path d="M15 17 L20 23"/>
+            <path d="M15.5 11 L11 8"/><path d="M15.5 11 L20 14"/>
+          </g>
+        </svg>
+      );
+    case 'skierg':
+      return (
+        <svg {...svgProps}>
+          <line className="stn-skiCord" x1="12" y1="2" x2="12" y2="11"/>
+          <line className="stn-skiCord" x1="20" y1="2" x2="20" y2="11"/>
+          {head(16, 8)}
+          <path d="M16 11 L16 20"/>
+          <g className="stn-skiArm"><path d="M16 11 L12 11"/><path d="M16 11 L20 11"/></g>
+          <path d="M16 20 L13 27"/><path d="M16 20 L19 27"/>
+        </svg>
+      );
+    case 'sledPush':
+      return (
+        <svg {...svgProps}>
+          <g className="stn-pushFig">
+            {head(10, 7)}<path d="M10 10 L13 17"/><path d="M13 17 L18 14"/>
+            <path d="M13 17 L10 25"/><path d="M13 17 L17 24"/>
+          </g>
+          <rect x="20" y="22" width="9" height="5" rx="0.5"/>
+          <line x1="20" y1="22" x2="18" y2="20"/>
+        </svg>
+      );
+    case 'sledPull':
+      return (
+        <svg {...svgProps}>
+          <g className="stn-pullFig">
+            {head(22, 7)}<path d="M22 10 L19 17"/><path d="M19 17 L14 16"/>
+            <path d="M19 17 L22 25"/><path d="M19 17 L15 24"/>
+          </g>
+          <line className="stn-rope" x1="14" y1="16" x2="6" y2="22"/>
+          <rect x="2" y="22" width="6" height="4" rx="0.5"/>
+        </svg>
+      );
+    case 'burpee':
+      return (
+        <svg {...svgProps}>
+          <g className="stn-burpee">
+            {head(16, 6)}<path d="M16 9 L16 18"/>
+            <path d="M16 12 L11 9"/><path d="M16 12 L21 9"/>
+            <path d="M16 18 L12 27"/><path d="M16 18 L20 27"/>
+          </g>
+          <line x1="6" y1="28" x2="26" y2="28"/>
+        </svg>
+      );
+    case 'rowing':
+      return (
+        <svg {...svgProps}>
+          <g className="stn-rowA">
+            {head(18, 9)}<path d="M18 12 L15 18"/><path d="M15 18 L8 17"/>
+            <path d="M15 18 L22 22"/><line x1="8" y1="17" x2="3" y2="13"/>
+          </g>
+          <g className="stn-rowB">
+            {head(14, 8)}<path d="M14 11 L13 17"/><path d="M13 17 L8 13"/>
+            <path d="M13 17 L17 22"/><line x1="8" y1="13" x2="3" y2="13"/>
+          </g>
+          <line x1="3" y1="25" x2="29" y2="25"/>
+        </svg>
+      );
+    case 'farmers':
+      return (
+        <svg {...svgProps}>
+          <g className="stn-bob">
+            {head(16, 5)}<path d="M16 8 L16 19"/>
+            <path d="M16 11 L10 13"/><path d="M16 11 L22 13"/>
+            <path d="M16 19 L13 27"/><path d="M16 19 L19 27"/>
+            <rect x="7" y="13" width="6" height="4" rx="0.6"/>
+            <rect x="19" y="13" width="6" height="4" rx="0.6"/>
+          </g>
+        </svg>
+      );
+    case 'lunges':
+      return (
+        <svg {...svgProps}>
+          <g className="stn-lungeA">
+            {head(16, 6)}<rect x="11" y="8" width="10" height="3" rx="0.6"/>
+            <path d="M16 11 L16 19"/>
+            <path d="M16 19 L21 23"/><path d="M21 23 L21 28"/>
+            <path d="M16 19 L13 28"/>
+          </g>
+          <g className="stn-lungeB">
+            {head(16, 6)}<rect x="11" y="8" width="10" height="3" rx="0.6"/>
+            <path d="M16 11 L16 19"/>
+            <path d="M16 19 L11 23"/><path d="M11 23 L11 28"/>
+            <path d="M16 19 L19 28"/>
+          </g>
+        </svg>
+      );
+    case 'wallballs':
+      return (
+        <svg {...svgProps}>
+          <circle className="stn-wbBall" cx="16" cy="14" r="2.6" fill="currentColor"/>
+          <g className="stn-wbFig">
+            {head(16, 8)}<path d="M16 11 L16 21"/>
+            <path d="M16 13 L12 16"/><path d="M16 13 L20 16"/>
+            <path d="M16 21 L13 27"/><path d="M16 21 L19 27"/>
+          </g>
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 function StatCard({ label, value, sub, icon, grad }) {
   const { t } = useTheme();
   return (
@@ -1584,7 +1747,7 @@ function WorkoutSummary({ workout, compact }) {
           const pct = c?.pct || 0;
           return (
             <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ minWidth: 44 }}><Pill grad={s.grad} size="sm">{s.abbr}</Pill></div>
+              <div style={{ minWidth: 44, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ color: s.color, display: 'flex' }}><StationIcon id={s.id} size={18} /></span><Pill grad={s.grad} size="sm">{s.abbr}</Pill></div>
               <div style={{ flex: 1, height: 8, background: t.surfaceAlt, borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{ width: `${pct}%`, height: '100%', background: s.grad, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)', borderRadius: 4 }} />
               </div>
@@ -2241,7 +2404,10 @@ function DayExerciseCard({ raw, equiv, parsed, onAdd, t, inp, lbl, swap }: any) 
       <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: grad }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingLeft: 4 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{raw}</div>
-        <Pill grad={grad} size="sm">→ {meta.abbr}</Pill>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ color: color, display: 'flex' }}><StationIcon id={equiv.station} size={18} /></span>
+          <Pill grad={grad} size="sm">→ {meta.abbr}</Pill>
+        </span>
       </div>
       <div style={{ fontSize: 11, color: t.textSec, fontWeight: 500, marginBottom: swap ? 4 : 12, paddingLeft: 4 }}>logs as <span style={{ color: ACC, fontWeight: 700 }}>{equiv.name}</span> · {equiv.match}% match</div>
       {swap && (
@@ -2469,7 +2635,10 @@ function DirectMode({ stationData, setStation, runCount, setRunCount, runPace, s
             <div key={s.id} style={{ background: t.card, border: `1px solid ${active ? s.color : t.border}`, borderRadius: 12, padding: '10px 12px', boxShadow: active ? `0 2px 10px ${s.color}20` : t.cardShadow, position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: 3, height: '100%', background: s.grad }} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7, paddingLeft: 4 }}>
-                <div><span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{s.name}</span><span style={{ fontSize: 11, color: t.textSec, marginLeft: 6 }}>{s.desc}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ color: s.color, display: 'flex' }}><StationIcon id={s.id} size={20} /></span>
+                  <div><span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{s.name}</span><span style={{ fontSize: 11, color: t.textSec, marginLeft: 6 }}>{s.desc}</span></div>
+                </div>
                 <Pill grad={s.grad} size="sm">{s.abbr}</Pill>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: s.hasWeight ? '1fr 1fr' : '1fr', gap: 8, paddingLeft: 4 }}>
@@ -3781,6 +3950,7 @@ function RaceDay({ workouts, pbs, profile, embedded = false }: any) {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: i < proj.stations.length - 1 ? `1px solid ${t.border}` : 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ color: s.color, display: 'flex' }}><StationIcon id={s.id} size={20} /></span>
                 <Pill grad={s.grad} size="sm">{s.abbr}</Pill>
                 <span style={{ fontSize: 14, color: t.text, fontWeight: 600 }}>{s.name}</span>
               </div>
@@ -3811,7 +3981,10 @@ function RaceDay({ workouts, pbs, profile, embedded = false }: any) {
                 <div style={{ fontSize: 22, fontWeight: 800, color: t.text, letterSpacing: -0.4 }}>{weakest.station.name}</div>
                 <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>{weakest.station.desc}</div>
               </div>
-              <Pill grad={weakest.station.grad} size="lg">{weakest.station.abbr}</Pill>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: weakest.station.color, display: 'flex' }}><StationIcon id={weakest.station.id} size={32} /></span>
+                <Pill grad={weakest.station.grad} size="lg">{weakest.station.abbr}</Pill>
+              </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 18 }}>
               <div>
@@ -3865,6 +4038,7 @@ function RaceDay({ workouts, pbs, profile, embedded = false }: any) {
             padding: '12px 0', borderBottom: i < ranking.length - 1 ? `1px solid ${t.border}` : 'none', gap: 10,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+              <span style={{ color: r.station.color, display: 'flex' }}><StationIcon id={r.station.id} size={20} /></span>
               <Pill grad={r.station.grad} size="sm">{r.station.abbr}</Pill>
               <span style={{ fontSize: 14, fontWeight: 600, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.station.name}</span>
             </div>
