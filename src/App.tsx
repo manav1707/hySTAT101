@@ -151,13 +151,18 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
        opened while scrolled down would render off-screen above the user.
        Horizontal padding lives here (driven by --panel-pad-x on the container)
        so panel content widths stay stable across tab switches. */
-    .hyrox-tab-panel { contain: layout style; padding-inline: var(--panel-pad-x); animation: hyrox-panel-in 220ms cubic-bezier(0.2, 0, 0, 1); }
+    .hyrox-tab-panel { contain: layout style; padding-inline: var(--panel-pad-x); animation: hyrox-panel-in 260ms cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes hyrox-panel-in {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+    /* Bottom-nav button tap feedback — quick scale-down so the press feels
+       tactile. Transform-only so it's GPU-cheap; honors reduced-motion. */
+    .hyrox-tabs button { transition: color 0.15s, background 0.15s, border-color 0.15s, transform 80ms ease-out; }
+    .hyrox-tabs button:active { transform: scale(0.94); }
     @media (prefers-reduced-motion: reduce) {
       .hyrox-tab-panel { animation: none; }
+      .hyrox-tabs button:active { transform: none; }
     }
     @keyframes hyrox-streak-pulse {
       0%, 100% { transform: scale(1); }
@@ -2705,6 +2710,52 @@ function getRecoveryTips(workout: any, allWorkouts: any[] = [], profile: any = n
   return picked.slice(0, 3);
 }
 
+// Welcome / tutorial modal shown once per user, right after onboarding,
+// while they still have no workouts. Six stacked cards introduce each tab.
+// Dismissed by stamping profile.tutorialDismissed so it never reappears
+// (survives reset because reset clears the profile entirely).
+function TutorialOverlay({ onDismiss }: { onDismiss: () => void }) {
+  const { t } = useTheme();
+  const items = [
+    { icon: Home, name: 'Home', body: "Your cumulative score, projected race finish, current streak and recent sessions — the dashboard you'll open most." },
+    { icon: Clipboard, name: 'Log', body: "Log a workout in two modes — Translate (paste a gym routine and we convert it to Hyrox stations) or Direct (type station times)." },
+    { icon: Map, name: 'Plan', body: "An auto-generated multi-week plan based on your race date and weekly routine. Today's session is highlighted." },
+    { icon: BarChart3, name: 'Stats', body: "Per-station progression charts. Unlocks once you've logged two or more sessions on a station." },
+    { icon: Users, name: 'Crew', body: "Compare scores with training partners. Share your 6-character Athlete ID — once they add you, you both appear on each other's leaderboard." },
+    { icon: User, name: 'Profile', body: "Edit your details, event, weekly routine. Export your data, sign out, or wipe and start over." },
+  ];
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px', paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)', overflowY: 'auto' }}>
+      <div style={{ background: t.card, borderRadius: 22, padding: 22, maxWidth: 480, width: '100%', boxShadow: '0 30px 80px rgba(0,0,0,0.5)', border: `1px solid ${t.border}` }}>
+        <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC, fontWeight: 800, marginBottom: 6, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACC, boxShadow: `0 0 8px ${ACC}` }} /> Welcome
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: t.text, letterSpacing: -0.6, marginBottom: 6, lineHeight: 1.1 }}>Six tabs, one race</div>
+        <div style={{ fontSize: 13, color: t.textSec, lineHeight: 1.5, marginBottom: 18 }}>Here's what each section does. Tap a tab in the bottom nav any time to switch.</div>
+        <div style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
+          {items.map(tb => (
+            <div key={tb.name} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: t.surfaceAlt, border: `1px solid ${t.border}`, borderRadius: 12, padding: '11px 13px' }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${ACC}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon C={tb.icon} size={16} color={ACC} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginBottom: 3, letterSpacing: -0.1 }}>{tb.name}</div>
+                <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.45 }}>{tb.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={onDismiss} style={{
+          width: '100%', padding: '14px', fontSize: 14, fontWeight: 800,
+          background: ACC, color: '#000', border: 'none', borderRadius: 12,
+          cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
+          boxShadow: `0 8px 20px ${ACC}30`,
+        }}>GOT IT — LET'S TRAIN</button>
+      </div>
+    </div>
+  );
+}
+
 function PostWorkoutInsight({ workout, allWorkouts, pbs, profile, onClose }) {
   const { t } = useTheme();
   const [insight, setInsight] = useState(null);
@@ -4051,6 +4102,10 @@ export default function HyroxTracker() {
       </div>
 
       <InstallPrompt />
+
+      {profile && !profile.tutorialDismissed && workouts.length === 0 && (
+        <TutorialOverlay onDismiss={() => saveProfile({ ...profile, tutorialDismissed: true })} />
+      )}
 
       {/* Conditional render: only the active panel exists in the DOM. Switching
           unmounts the previous panel and mounts the new one, so each tab's
