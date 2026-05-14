@@ -160,13 +160,14 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
        tactile. Transform-only so it's GPU-cheap; honors reduced-motion. */
     .hyrox-tabs button { transition: color 0.15s, background 0.15s, border-color 0.15s, transform 80ms ease-out; }
     .hyrox-tabs button:active { transform: scale(0.94); }
-    /* Tour card scales in from 0.88 (re-keyed each step so the entrance
-       replays). Inner pieces (icon, title, body) stagger in 80ms apart
-       on a separate animation so each step feels actively revealed
-       rather than statically swapped. */
+    /* Tour card slides up + scales from 0.94 (re-keyed each step so the
+       entrance replays). Inner pieces (icon, title, body) stagger in 80ms
+       apart on a separate animation so each step feels actively revealed
+       rather than statically swapped. Card is bottom-anchored so the
+       section behind it stays legible. */
     @keyframes hyrox-tour-card-in {
-      from { opacity: 0; transform: translate(-50%, -50%) scale(0.88); }
-      to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      from { opacity: 0; transform: translateY(24px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
     }
     @keyframes hyrox-tour-item-in {
       from { opacity: 0; transform: translateY(14px); }
@@ -2779,31 +2780,31 @@ function TutorialOverlay({ onDismiss, onNavigate }: { onDismiss: () => void; onN
 
   return (
     <>
-      {/* Strong dim + blur backdrop so the tour card is the unmistakable
-          focus. pointer-events: none lets taps fall through outside the
-          card itself (Skip / Next are inside). */}
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.68)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', zIndex: 999, pointerEvents: 'none' }} />
+      {/* Soft dim only over the upper portion so the section content stays
+          legible and the card at the bottom feels grounded. A bottom-up
+          fade in the gradient keeps the card area itself fully transparent
+          for visual context with the live tab behind. */}
+      <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 50%, transparent 100%)', zIndex: 999, pointerEvents: 'none' }} />
 
       <div
         key={step}
         className="hyrox-tour-card"
         style={{
           position: 'fixed',
-          top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 'calc(100% - 28px)', maxWidth: 380,
-          zIndex: 1000,
-          background: t.card, border: `1.5px solid ${ACC}55`, borderRadius: 22,
-          padding: '22px 22px 20px',
-          boxShadow: `0 30px 80px rgba(0,0,0,0.7), 0 0 60px ${ACC}18`,
+          bottom: 'calc(env(safe-area-inset-bottom) + 80px)', // clears bottom nav
+          left: 14, right: 14, zIndex: 1000,
+          maxWidth: 380, marginLeft: 'auto', marginRight: 'auto',
+          background: t.card, border: `1.5px solid ${ACC}55`, borderRadius: 18,
+          padding: '16px 18px 14px',
+          boxShadow: `0 30px 80px rgba(0,0,0,0.7), 0 0 50px ${ACC}20`,
         }}
       >
         {/* Step progress: widened-dot pattern + Skip on the right */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
             {steps.map((_, i) => (
               <span key={i} style={{
-                width: i === step ? 22 : 6, height: 6, borderRadius: 3,
+                width: i === step ? 20 : 5, height: 5, borderRadius: 3,
                 background: i <= step ? ACC : t.border,
                 transition: 'all 320ms cubic-bezier(0.16, 1, 0.3, 1)',
               }} />
@@ -2812,41 +2813,41 @@ function TutorialOverlay({ onDismiss, onNavigate }: { onDismiss: () => void; onN
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: t.textSec, fontSize: 11, fontWeight: 700, letterSpacing: 1, cursor: 'pointer', fontFamily: FONT, padding: 4 }}>SKIP</button>
         </div>
 
-        {/* Halo'd section icon — the most face-forward element */}
-        <div className="hyrox-tour-icon" style={{
-          width: 84, height: 84, borderRadius: '50%',
-          background: `radial-gradient(circle at 50% 50%, ${ACC}22 0%, ${ACC}10 50%, transparent 75%)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 22px', position: 'relative',
-        }}>
-          <div className="hyrox-tour-halo-anim" style={{
-            position: 'absolute', inset: 16, borderRadius: '50%',
-            background: `${ACC}18`,
-            border: `1.5px solid ${ACC}70`,
-          }} />
-          <Icon C={cur.icon} size={32} color={ACC} style={{ position: 'relative', zIndex: 1 }} />
-        </div>
-
-        {/* Section name + Step N/N eyebrow */}
-        <div className="hyrox-tour-name" style={{ textAlign: 'center', marginBottom: 14 }}>
-          <div style={{ fontSize: 10, letterSpacing: 2.5, color: ACC, fontWeight: 800, marginBottom: 6, textTransform: 'uppercase' }}>
-            Step {step + 1} / {steps.length}
+        {/* Halo icon + name on one row — compact but still face-forward */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+          <div className="hyrox-tour-icon" style={{
+            width: 52, height: 52, borderRadius: '50%',
+            background: `radial-gradient(circle at 50% 50%, ${ACC}22 0%, ${ACC}10 55%, transparent 80%)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            position: 'relative',
+          }}>
+            <div className="hyrox-tour-halo-anim" style={{
+              position: 'absolute', inset: 8, borderRadius: '50%',
+              background: `${ACC}18`,
+              border: `1.5px solid ${ACC}70`,
+            }} />
+            <Icon C={cur.icon} size={22} color={ACC} style={{ position: 'relative', zIndex: 1 }} />
           </div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: t.text, letterSpacing: -0.8, lineHeight: 1 }}>{cur.name}</div>
+          <div className="hyrox-tour-name" style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, color: ACC, fontWeight: 800, marginBottom: 2, textTransform: 'uppercase' }}>
+              Step {step + 1} / {steps.length}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: t.text, letterSpacing: -0.5, lineHeight: 1 }}>{cur.name}</div>
+          </div>
         </div>
 
         {/* Description */}
-        <div className="hyrox-tour-body" style={{ fontSize: 14, color: t.textSec, lineHeight: 1.55, textAlign: 'center', marginBottom: 22, padding: '0 4px' }}>
+        <div className="hyrox-tour-body" style={{ fontSize: 13, color: t.textSec, lineHeight: 1.5, marginBottom: 14 }}>
           {cur.body}
         </div>
 
         {/* CTA */}
         <button onClick={advance} style={{
-          width: '100%', padding: '15px', fontSize: 14, fontWeight: 800,
-          background: ACC, color: '#000', border: 'none', borderRadius: 12,
+          width: '100%', padding: '13px', fontSize: 13, fontWeight: 800,
+          background: ACC, color: '#000', border: 'none', borderRadius: 11,
           cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
-          boxShadow: `0 10px 28px ${ACC}40`,
-        }}>{isLast ? "GOT IT — LET'S TRAIN" : `EXPLORE ${cur.name.toUpperCase()} →`}</button>
+          boxShadow: `0 8px 22px ${ACC}40`,
+        }}>{isLast ? "GOT IT — LET'S TRAIN" : `NEXT — ${cur.name.toUpperCase()} →`}</button>
       </div>
     </>
   );
