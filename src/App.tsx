@@ -1892,7 +1892,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
         </div>
       )}
 
-      <div>
+      {leaderboard.length > 1 && <div>
         <div style={{ display: 'grid', gap: 8 }}>
           {leaderboard.map((a, i) => {
             const rank = i + 1;
@@ -1931,7 +1931,7 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
             );
           })}
         </div>
-      </div>
+      </div>}
 
       <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Add a Friend
