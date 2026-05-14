@@ -160,9 +160,16 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
        tactile. Transform-only so it's GPU-cheap; honors reduced-motion. */
     .hyrox-tabs button { transition: color 0.15s, background 0.15s, border-color 0.15s, transform 80ms ease-out; }
     .hyrox-tabs button:active { transform: scale(0.94); }
+    /* Tour card slides in from below; re-animated on each step via key. */
+    @keyframes hyrox-tour-in {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hyrox-tour-card { animation: hyrox-tour-in 320ms cubic-bezier(0.16, 1, 0.3, 1); }
     @media (prefers-reduced-motion: reduce) {
       .hyrox-tab-panel { animation: none; }
       .hyrox-tabs button:active { transform: none; }
+      .hyrox-tour-card { animation: none; }
     }
     @keyframes hyrox-streak-pulse {
       0%, 100% { transform: scale(1); }
@@ -1882,18 +1889,34 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
       </div>
 
       {leaderboard.length === 1 && (
-        <div style={{ background: t.card, border: `1.5px dashed ${ACC}50`, borderRadius: 16, padding: '24px 20px', marginBottom: 18, textAlign: 'center' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: `${ACC}15`, marginBottom: 12 }}>
-            <Icon C={Users} size={24} color={ACC} />
+        <div style={{ background: t.card, border: `1.5px dashed ${ACC}50`, borderRadius: 16, padding: '22px 18px', marginBottom: 18 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: `${ACC}15`, marginBottom: 12 }}>
+              <Icon C={Users} size={24} color={ACC} />
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.text, marginBottom: 4, letterSpacing: -0.3 }}>Add a Hyrox crew</div>
+            <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.5, marginBottom: 16, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+              Share your Athlete ID with a training partner — once they add you, you'll appear on each other's leaderboards.
+            </div>
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: t.text, marginBottom: 4, letterSpacing: -0.3 }}>Add a Hyrox crew</div>
-          <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.5, marginBottom: 14, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
-            Share your Athlete ID with a training partner — once they add you, you'll appear on each other's leaderboards.
+
+          <div style={{ fontSize: 10, letterSpacing: 1.8, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Your Athlete ID</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, background: t.surfaceAlt, borderRadius: 10, padding: '10px 14px', border: `1px solid ${t.border}`, marginBottom: 16 }}>
+            <span style={{ fontFamily: 'SF Mono, Monaco, monospace', fontSize: 17, fontWeight: 800, letterSpacing: 3, color: t.text }}>{profile.userId}</span>
+            <button onClick={copyMyId} style={{ background: copied ? ACC : 'transparent', color: copied ? '#000' : ACC, border: `1px solid ${ACC}`, borderRadius: 999, padding: '6px 12px', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: FONT, letterSpacing: 0.5 }}>{copied ? 'COPIED' : 'COPY'}</button>
           </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: t.surfaceAlt, borderRadius: 999, padding: '8px 14px', border: `1px solid ${t.border}` }}>
-            <span style={{ fontFamily: 'SF Mono, Monaco, monospace', fontSize: 15, fontWeight: 800, letterSpacing: 3, color: t.text }}>{profile.userId}</span>
-            <button onClick={copyMyId} style={{ background: 'none', border: 'none', color: copied ? ACC : t.textSec, cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: FONT, letterSpacing: 0.5 }}>{copied ? 'COPIED' : 'COPY'}</button>
+
+          <div style={{ fontSize: 10, letterSpacing: 1.8, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Or add their ID</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
+              style={{ flex: 1, minWidth: 0, padding: '10px', fontSize: 15, fontWeight: 700, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, textAlign: 'center', textTransform: 'uppercase' }} />
+            <button onClick={addFriend} disabled={adding || !addId} style={{
+              padding: '10px 14px', fontSize: 12, fontWeight: 700,
+              background: adding || !addId ? t.borderInput : ACC, color: adding || !addId ? '#fff' : '#000', border: 'none', borderRadius: 10,
+              cursor: adding || !addId ? 'not-allowed' : 'pointer', fontFamily: FONT, flexShrink: 0, letterSpacing: 0.3,
+            }}>{adding ? '...' : 'ADD'}</button>
           </div>
+          {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
         </div>
       )}
 
@@ -1938,22 +1961,26 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
         </div>
       </div>}
 
-      <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Add a Friend
-      </div>
-      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 12, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
-        <div style={{ fontSize: 12, color: t.textSec, marginBottom: 10 }}>Enter your friend's 6-character Athlete ID:</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
-            style={{ flex: 1, minWidth: 0, padding: '11px', fontSize: 16, fontWeight: 700, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, textAlign: 'center', textTransform: 'uppercase' }} />
-          <button onClick={addFriend} disabled={adding || !addId} style={{
-            padding: '11px 14px', fontSize: 12, fontWeight: 700,
-            background: adding || !addId ? t.borderInput : ACC, color: adding || !addId ? '#fff' : '#000', border: 'none', borderRadius: 10,
-            cursor: adding || !addId ? 'not-allowed' : 'pointer', fontFamily: FONT, flexShrink: 0, letterSpacing: 0.3,
-          }}>{adding ? '...' : 'ADD'}</button>
-        </div>
-        {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
-      </div>
+      {leaderboard.length > 1 && (
+        <>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Add a Friend
+          </div>
+          <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 12, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{ fontSize: 12, color: t.textSec, marginBottom: 10 }}>Enter your friend's 6-character Athlete ID:</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="text" maxLength={6} value={addId} onChange={e => { setAddId(e.target.value.toUpperCase()); setError(''); }} placeholder="A3F9XB"
+                style={{ flex: 1, minWidth: 0, padding: '11px', fontSize: 16, fontWeight: 700, borderRadius: 10, border: `1.5px solid ${t.borderInput}`, background: t.inputBg, color: t.text, boxSizing: 'border-box' as const, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, textAlign: 'center', textTransform: 'uppercase' }} />
+              <button onClick={addFriend} disabled={adding || !addId} style={{
+                padding: '11px 14px', fontSize: 12, fontWeight: 700,
+                background: adding || !addId ? t.borderInput : ACC, color: adding || !addId ? '#fff' : '#000', border: 'none', borderRadius: 10,
+                cursor: adding || !addId ? 'not-allowed' : 'pointer', fontFamily: FONT, flexShrink: 0, letterSpacing: 0.3,
+              }}>{adding ? '...' : 'ADD'}</button>
+            </div>
+            {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
+          </div>
+        </>
+      )}
 
       {leaderboard.length > 1 && (
         <>
@@ -2710,49 +2737,78 @@ function getRecoveryTips(workout: any, allWorkouts: any[] = [], profile: any = n
   return picked.slice(0, 3);
 }
 
-// Welcome / tutorial modal shown once per user, right after onboarding,
-// while they still have no workouts. Six stacked cards introduce each tab.
-// Dismissed by stamping profile.tutorialDismissed so it never reappears
-// (survives reset because reset clears the profile entirely).
-function TutorialOverlay({ onDismiss }: { onDismiss: () => void }) {
+// Walkthrough tour: a floating card pinned above the bottom nav that steps
+// through each tab, switching the active tab as you tap Next so the user
+// actually sees the section behind the card. Dismissed by stamping
+// profile.tutorialDismissed (survives reset because reset clears the
+// profile entirely, so a fresh user gets the tour again).
+function TutorialOverlay({ onDismiss, onNavigate }: { onDismiss: () => void; onNavigate: (tab: string) => void }) {
   const { t } = useTheme();
-  const items = [
-    { icon: Home, name: 'Home', body: "Your cumulative score, projected race finish, current streak and recent sessions — the dashboard you'll open most." },
-    { icon: Clipboard, name: 'Log', body: "Log a workout in two modes — Translate (paste a gym routine and we convert it to Hyrox stations) or Direct (type station times)." },
-    { icon: Map, name: 'Plan', body: "An auto-generated multi-week plan based on your race date and weekly routine. Today's session is highlighted." },
-    { icon: BarChart3, name: 'Stats', body: "Per-station progression charts. Unlocks once you've logged two or more sessions on a station." },
-    { icon: Users, name: 'Crew', body: "Compare scores with training partners. Share your 6-character Athlete ID — once they add you, you both appear on each other's leaderboard." },
-    { icon: User, name: 'Profile', body: "Edit your details, event, weekly routine. Export your data, sign out, or wipe and start over." },
+  const steps = [
+    { tab: 'dashboard', icon: Home, name: 'Home', body: "Your daily dashboard — cumulative Hyrox score, projected race finish, current streak, and recent sessions all in one place." },
+    { tab: 'log', icon: Clipboard, name: 'Log', body: "Log a workout two ways — Translate a pasted gym routine (we auto-match it to Hyrox stations) or type station times directly." },
+    { tab: 'plan', icon: Map, name: 'Plan', body: "An auto-generated multi-week plan based on your race date and routine. The current week's day-by-day prescription is at the top." },
+    { tab: 'progress', icon: BarChart3, name: 'Stats', body: "Per-station progression charts — see how each Hyrox station has trended over time. Unlocks after 2+ sessions on a station." },
+    { tab: 'friends', icon: Users, name: 'Crew', body: "Compare scores with training partners. Share your 6-character Athlete ID — once they add you, you both appear on each other's leaderboards." },
+    { tab: 'profile', icon: User, name: 'Profile', body: "Edit your details, event, weekly routine. Export your data, sign out, or wipe everything and start over." },
   ];
+  const [step, setStep] = useState(0);
+  const cur = steps[step];
+  const isLast = step === steps.length - 1;
+
+  // Switch the underlying tab whenever the step changes so the user sees
+  // the section the card is describing.
+  useEffect(() => { onNavigate(cur.tab); }, [step]);
+
+  const advance = () => { if (isLast) onDismiss(); else setStep(step + 1); };
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px', paddingTop: 'calc(env(safe-area-inset-top) + 16px)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)', overflowY: 'auto' }}>
-      <div style={{ background: t.card, borderRadius: 22, padding: 22, maxWidth: 480, width: '100%', boxShadow: '0 30px 80px rgba(0,0,0,0.5)', border: `1px solid ${t.border}` }}>
-        <div style={{ fontSize: 11, letterSpacing: 2.5, color: ACC, fontWeight: 800, marginBottom: 6, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACC, boxShadow: `0 0 8px ${ACC}` }} /> Welcome
+    <>
+      {/* Soft dim so the focus stays on the card but the live tab is still
+          legible behind it. pointer-events: none lets taps fall through
+          everywhere except the card itself. */}
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 999, pointerEvents: 'none' }} />
+
+      <div
+        key={step}
+        className="hyrox-tour-card"
+        style={{
+          position: 'fixed',
+          bottom: 'calc(env(safe-area-inset-bottom) + 84px)', // clears bottom nav (~70px) + breathing room
+          left: 14, right: 14, zIndex: 1000,
+          background: t.card, border: `1.5px solid ${ACC}50`, borderRadius: 16,
+          padding: 16, boxShadow: '0 24px 60px rgba(0,0,0,0.6)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontSize: 10, letterSpacing: 2, color: ACC, fontWeight: 800, textTransform: 'uppercase' }}>
+            Step {step + 1} of {steps.length}
+          </div>
+          <button onClick={onDismiss} style={{ background: 'none', border: 'none', color: t.textSec, fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: 'pointer', fontFamily: FONT, padding: 4 }}>SKIP</button>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 900, color: t.text, letterSpacing: -0.6, marginBottom: 6, lineHeight: 1.1 }}>Six tabs, one race</div>
-        <div style={{ fontSize: 13, color: t.textSec, lineHeight: 1.5, marginBottom: 18 }}>Here's what each section does. Tap a tab in the bottom nav any time to switch.</div>
-        <div style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
-          {items.map(tb => (
-            <div key={tb.name} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', background: t.surfaceAlt, border: `1px solid ${t.border}`, borderRadius: 12, padding: '11px 13px' }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${ACC}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon C={tb.icon} size={16} color={ACC} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: t.text, marginBottom: 3, letterSpacing: -0.1 }}>{tb.name}</div>
-                <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.45 }}>{tb.body}</div>
-              </div>
-            </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${ACC}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon C={cur.icon} size={15} color={ACC} />
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: t.text, letterSpacing: -0.3 }}>{cur.name}</div>
+        </div>
+
+        <div style={{ fontSize: 12, color: t.textSec, lineHeight: 1.5, marginBottom: 12 }}>{cur.body}</div>
+
+        <div style={{ display: 'flex', gap: 5, justifyContent: 'center', marginBottom: 12 }}>
+          {steps.map((_, i) => (
+            <span key={i} style={{ width: i === step ? 16 : 6, height: 6, borderRadius: 3, background: i === step ? ACC : t.border, transition: 'all 200ms ease-out' }} />
           ))}
         </div>
-        <button onClick={onDismiss} style={{
-          width: '100%', padding: '14px', fontSize: 14, fontWeight: 800,
-          background: ACC, color: '#000', border: 'none', borderRadius: 12,
+
+        <button onClick={advance} style={{
+          width: '100%', padding: '12px', fontSize: 13, fontWeight: 800,
+          background: ACC, color: '#000', border: 'none', borderRadius: 10,
           cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3,
-          boxShadow: `0 8px 20px ${ACC}30`,
-        }}>GOT IT — LET'S TRAIN</button>
+        }}>{isLast ? "GOT IT — LET'S TRAIN" : 'NEXT →'}</button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -4104,7 +4160,10 @@ export default function HyroxTracker() {
       <InstallPrompt />
 
       {profile && !profile.tutorialDismissed && workouts.length === 0 && (
-        <TutorialOverlay onDismiss={() => saveProfile({ ...profile, tutorialDismissed: true })} />
+        <TutorialOverlay
+          onDismiss={() => saveProfile({ ...profile, tutorialDismissed: true })}
+          onNavigate={(tabId) => setTab(tabId)}
+        />
       )}
 
       {/* Conditional render: only the active panel exists in the DOM. Switching
