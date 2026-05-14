@@ -780,12 +780,10 @@ function generatePlan(profile: any, today: Date = new Date()) {
   const rawDays = useExisting
     ? profile.routine.parsed.days
     : (DEFAULT_DAY_SPLITS[level] || DEFAULT_DAY_SPLITS.intermediate);
-  // Default splits are now Hyrox-station-named for every tier — equipment access
-  // surfaces as a per-card swap hint instead of a rewritten prescription. The
-  // adaptExtrasForEquipment rewriter still runs on user-pasted routines as a courtesy.
-  const baseDays = useExisting
-    ? rawDays.map((d: any) => ({ ...d, sessions: adaptExtrasForEquipment(d.sessions, equipment) }))
-    : rawDays;
+  // Equipment access rewrites prescriptions on every day so home/minimal users
+  // see their actual exercises in the plan, not Hyrox stations with a swap hint
+  // tacked on. hyrox/gym tiers are pass-through (adaptExtrasForEquipment no-ops).
+  const baseDays = rawDays.map((d: any) => ({ ...d, sessions: adaptExtrasForEquipment(d.sessions, equipment) }));
   const usingDefault = !useExisting;
 
   const weeks: any[] = [];
@@ -810,7 +808,7 @@ function generatePlan(profile: any, today: Date = new Date()) {
       n: i + 1, start, end, phase,
       days: baseDays,
       hyroxFocus: phaseInfo.focus,
-      extraSessions: phaseInfo.extras,
+      extraSessions: adaptExtrasForEquipment(phaseInfo.extras, equipment),
       isCurrent: today >= start && today <= end,
       isPast: end.getTime() < today.getTime(),
     });
@@ -1633,9 +1631,13 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 13, color: t.textSec, fontWeight: 600, marginBottom: 4 }}>{greeting}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: t.text, letterSpacing: -0.6, display: 'flex', alignItems: 'center', gap: 10 }}>{firstName} <Icon C={Hand} size={22} color={t.text} className="anim-wave" /></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={{ fontSize: 30, fontWeight: 900, color: t.text, letterSpacing: -0.8, lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span>{greeting}, {firstName}</span>
+            <Icon C={Hand} size={28} color={ACC} className="anim-wave" />
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Pill grad={GRAD.orange} size="md">{profile.athleteType?.toUpperCase()}</Pill>
           <Pill color={t.textSec} size="md">{profile.level?.toUpperCase()}</Pill>
         </div>
@@ -1948,36 +1950,26 @@ function Friends({ profile, saveProfile, workouts, pbs }) {
         {error && <div style={{ fontSize: 12, color: '#DC2626', marginTop: 8, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}><Icon C={AlertTriangle} size={12} color="#DC2626" /> {error}</div>}
       </div>
 
-      <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Your Athlete ID
-      </div>
-      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 12, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, color: t.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.userId}</div>
-          <button onClick={copyMyId} style={{
-            padding: '7px 12px', fontSize: 11, fontWeight: 700,
-            background: copied ? ACC : t.surfaceAlt, color: copied ? '#000' : t.text,
-            border: `1px solid ${copied ? ACC : t.border}`, borderRadius: 999,
-            cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3, flexShrink: 0,
-          }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon C={Check} size={11} color="#000" /> COPIED</span> : 'COPY ID'}</button>
-        </div>
-        <div style={{ fontSize: 11, color: t.textSec, marginTop: 8 }}>Share with friends so they can add you.</div>
-      </div>
+      {leaderboard.length > 1 && (
+        <>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Your Athlete ID
+          </div>
+          <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 12, boxShadow: t.cardShadow, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'SF Mono, Monaco, monospace', letterSpacing: 3, color: t.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.userId}</div>
+              <button onClick={copyMyId} style={{
+                padding: '7px 12px', fontSize: 11, fontWeight: 700,
+                background: copied ? ACC : t.surfaceAlt, color: copied ? '#000' : t.text,
+                border: `1px solid ${copied ? ACC : t.border}`, borderRadius: 999,
+                cursor: 'pointer', fontFamily: FONT, letterSpacing: 0.3, flexShrink: 0,
+              }}>{copied ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon C={Check} size={11} color="#000" /> COPIED</span> : 'COPY ID'}</button>
+            </div>
+            <div style={{ fontSize: 11, color: t.textSec, marginTop: 8 }}>Share with friends so they can add you.</div>
+          </div>
+        </>
+      )}
 
-      <div style={{ fontSize: 11, letterSpacing: 2, color: t.textSec, fontWeight: 700, textTransform: 'uppercase', margin: '20px 0 10px 2px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 4, height: 12, background: ACC, borderRadius: 2 }} /> Your Rank
-      </div>
-      <div style={{
-        background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '10px 12px',
-        boxShadow: t.cardShadow,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-      }}>
-        <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 22, fontWeight: 900, color: t.text, letterSpacing: -0.8, lineHeight: 1 }}>#{myRank}</span>
-          <span style={{ fontSize: 12, color: t.textSec, fontWeight: 500 }}>of {leaderboard.length} · {myCumulative.toFixed(1)}/80</span>
-        </div>
-        <Icon C={myRank === 1 ? Trophy : Award} size={20} color={ACC} />
-      </div>
     </div>
   );
 }
@@ -3269,35 +3261,35 @@ function Progress({ workouts, pbs }) {
 
       {view === 'all' ? (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
             {STATIONS.map(s => {
               const data = getDataFor(s.id);
               const spb = pbs[s.id];
               const sc = computeStationScore(s.id, workouts, spb);
               return (
-                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: '9px 11px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
+                <div key={s.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: '14px 16px', boxShadow: t.cardShadow, position: 'relative', overflow: 'hidden', minWidth: 0 }}>
                   <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: s.grad }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2, gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 10 }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.abbr}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+                      <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 2 }}>{s.abbr}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       {spb ? (
                         <>
-                          <div style={{ fontSize: 13, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
-                          {sc && <div style={{ fontSize: 9, color: t.textSec, marginTop: 1, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
+                          <div style={{ fontSize: 14, fontWeight: 800, color: s.color }}>{fmtTime(spb.time)}</div>
+                          {sc && <div style={{ fontSize: 10, color: t.textSec, marginTop: 2, fontWeight: 500 }}>{sc.score.toFixed(1)}/10 · {data.length} sess</div>}
                         </>
                       ) : <div style={{ fontSize: 11, color: t.textSec }}>No data</div>}
                     </div>
                   </div>
                   {data.length < 2 ? (
-                    <div style={{ fontSize: 10, color: t.textSec, textAlign: 'center', padding: '10px 0', background: t.surfaceAlt, borderRadius: 8, marginTop: 4, fontWeight: 500 }}>
+                    <div style={{ fontSize: 11, color: t.textSec, textAlign: 'center', padding: '14px 0', background: t.surfaceAlt, borderRadius: 8, marginTop: 6, fontWeight: 500 }}>
                       {data.length === 0 ? 'Not logged yet' : 'Log 1 more session'}
                     </div>
                   ) : (
-                    <div style={{ marginTop: 4 }}>
-                      <ResponsiveContainer width="100%" height={48}>
+                    <div style={{ marginTop: 6 }}>
+                      <ResponsiveContainer width="100%" height={60}>
                         <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                           <defs>
                             <linearGradient id={`grad-${s.id}`} x1="0" y1="0" x2="0" y2="1">
@@ -3319,7 +3311,7 @@ function Progress({ workouts, pbs }) {
                           <Area type="monotone" dataKey="time" stroke={s.color} strokeWidth={2.5} fill={`url(#grad-${s.id})`} isAnimationActive={false} activeDot={{ r: 4, fill: s.color }} />
                         </AreaChart>
                       </ResponsiveContainer>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: t.textSec, marginTop: 3, fontWeight: 500 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: t.textSec, marginTop: 4, fontWeight: 500 }}>
                         <span>{data[0]?.date}</span><span>{data[data.length - 1]?.date}</span>
                       </div>
                     </div>
@@ -3412,22 +3404,6 @@ function MyWeek({ profile }: any) {
         </div>
       </div>
 
-      {/* Phase focus card */}
-      <div style={{ background: t.card, border: `1.5px solid ${phase.color}40`, borderRadius: 16, padding: '16px 18px', marginBottom: 18, position: 'relative', overflow: 'hidden', boxShadow: t.cardShadow }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: phase.grad }} />
-        <div style={{ paddingLeft: 6 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.2, color: phase.color, textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Icon C={Target} size={11} color={phase.color} /> Hyrox Focus
-          </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: week.extraSessions.length ? 10 : 0, lineHeight: 1.4 }}>{week.hyroxFocus}</div>
-          {week.extraSessions.map((s: string, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: t.textMute, marginBottom: 5, lineHeight: 1.5 }}>
-              <span style={{ color: phase.color, flexShrink: 0, fontWeight: 700 }}>›</span><span>{s}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {usingDefault && (
         <div style={{ background: t.surfaceAlt, borderRadius: 12, padding: '12px 14px', marginBottom: 14, fontSize: 12, color: t.textSec, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Icon C={Lightbulb} size={13} color={ACC} />
@@ -3469,9 +3445,6 @@ function TrainingPlan({ profile, workouts = [] }: any) {
   const { t } = useTheme();
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const plan = generatePlan(profile, today);
-  const eventDate = plan.eventDate;
-  const planStart = plan.weeks[0]?.start || today;
-  const usingDefault = plan.usingDefault;
 
   // Group weeks by phase id, in plan order
   const phaseGroups: Array<{ phase: any; weeks: any[] }> = [];
@@ -3540,13 +3513,8 @@ function TrainingPlan({ profile, workouts = [] }: any) {
         </div>
       </div>
 
-      <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 14, padding: '14px 18px', marginBottom: 22, display: 'flex', gap: 14, alignItems: 'center', boxShadow: t.cardShadow }}>
-        <Icon C={Calendar} size={26} color={ACC} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>{plan.totalWeeks}-Week Plan → Hyrox {profile.eventCity}</div>
-          <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>{planStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} → {eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-          <div style={{ fontSize: 11, color: ACC, marginTop: 4, fontWeight: 600 }}>{usingDefault ? `Default ${profile.level} split — add a routine on Profile to personalize` : `Built on your routine (${profile.routine?.parsed?.days?.length || 0} days)`}</div>
-        </div>
+      <div style={{ marginBottom: 28 }}>
+        <MyWeek profile={profile} />
       </div>
       {phaseGroups.map(({ phase, weeks: groupWeeks }) => (
         <div key={phase.id} style={{ marginBottom: 32 }}>
@@ -3914,7 +3882,6 @@ function SafeAreaDebug() {
 const MemoDashboard = memo(Dashboard);
 const MemoRaceDay = memo(RaceDay);
 const MemoFriends = memo(Friends);
-const MemoMyWeek = memo(MyWeek);
 const MemoLogWorkout = memo(LogWorkout);
 const MemoProgress = memo(Progress);
 const MemoTrainingPlan = memo(TrainingPlan);
@@ -4071,12 +4038,12 @@ export default function HyroxTracker() {
           is black-translucent, so the app extends under the status bar). */}
       <div style={{ background: t.headerBg, paddingTop: `calc(${isCompact ? 14 : 26}px + env(safe-area-inset-top))`, paddingRight: isCompact ? 12 : 24, paddingBottom: isCompact ? 12 : 22, paddingLeft: isCompact ? 14 : 26, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isCompact ? 10 : 16, position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.4)', borderBottom: `1px solid ${ACC}30`, backgroundImage: `radial-gradient(circle at 12% 0%, ${ACC}18 0%, transparent 40%), radial-gradient(circle at 100% 100%, ${ACC}10 0%, transparent 50%)` }}>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${ACC} 30%, ${ACC} 70%, transparent)`, opacity: 0.7 }} />
-        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 1.8 : 2.5, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: 0, textAlign: 'left' }}>
+          <div style={{ fontSize: isCompact ? 9 : 10, letterSpacing: isCompact ? 1.8 : 2.5, color: ACC, fontWeight: 800, marginBottom: isCompact ? 4 : 8, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
             <CityLabel city={profile.eventCity} size={isCompact ? 11 : 12} />
           </div>
-          <div style={{ fontSize: isCompact ? 22 : 30, fontWeight: 900, color: '#fff', letterSpacing: -0.8, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
-          <div style={{ fontSize: isCompact ? 11 : 12, color: '#9ca3af', marginTop: isCompact ? 4 : 6, fontWeight: 500, letterSpacing: 0.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', isCompact ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          <div style={{ fontSize: isCompact ? 22 : 30, fontWeight: 900, color: '#fff', letterSpacing: -0.8, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>{profile.name?.split(' ')[0]?.toUpperCase() || 'ATHLETE'}</div>
+          <div style={{ fontSize: isCompact ? 11 : 12, color: '#9ca3af', marginTop: isCompact ? 4 : 6, fontWeight: 500, letterSpacing: 0.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>Race day · {new Date(profile.eventDate).toLocaleDateString('en-IN', isCompact ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, position: 'relative' }}>
           <Countdown eventDate={profile.eventDate} compact={isCompact} />
@@ -4105,7 +4072,6 @@ export default function HyroxTracker() {
         {tab === 'plan' && (
           <div className="hyrox-tab-panel">
             <MemoTrainingPlan profile={profile} workouts={workouts} />
-            <MemoMyWeek profile={profile} />
           </div>
         )}
         {tab === 'progress' && <div className="hyrox-tab-panel"><MemoProgress workouts={workouts} pbs={pbs} /></div>}
