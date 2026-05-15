@@ -220,12 +220,11 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     .stn-bob    { animation: stn-bob 0.9s ease-in-out infinite; }
     .stn-wbBall { animation: stn-wbBall 1.2s ease-in-out infinite; transform-origin: 16px 12px; transform-box: fill-box; }
     .stn-wbFig  { animation: stn-wbSquat 1.2s ease-in-out infinite; transform-origin: 16px 30px; transform-box: fill-box; }
-    @media (prefers-reduced-motion: reduce) {
-      .stn-runA, .stn-runB, .stn-rowA, .stn-rowB, .stn-lungeA, .stn-lungeB,
-      .stn-skiArm, .stn-skiCord, .stn-pushFig, .stn-pullFig, .stn-rope,
-      .stn-burpee, .stn-bob, .stn-wbBall, .stn-wbFig { animation: none; }
-      .stn-runB, .stn-rowB, .stn-lungeB { opacity: 0; }
-    }
+    /* Station icons paused — keep the two-frame markup but render statically. */
+    .stn-runA, .stn-runB, .stn-rowA, .stn-rowB, .stn-lungeA, .stn-lungeB,
+    .stn-skiArm, .stn-skiCord, .stn-pushFig, .stn-pullFig, .stn-rope,
+    .stn-burpee, .stn-bob, .stn-wbBall, .stn-wbFig { animation: none; }
+    .stn-runB, .stn-rowB, .stn-lungeB { opacity: 0; }
   `;
   document.head.appendChild(style);
 }
