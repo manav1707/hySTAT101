@@ -1139,20 +1139,21 @@ function StationIcon({ id, size = 22 }: { id: string; size?: number }) {
         </svg>
       );
     case 'sledPush':
-      // Body nearly horizontal pushing a low sled: head forward-low,
-      // torso diagonal, arms straight out onto the sled top.
+      // Body angled forward pushing a low sled with two weight-plate posts.
+      // Small head, diagonal torso, one arm forward to sled, back leg kicked
+      // out behind for drive.
       return (
         <svg {...svgProps}>
           <g className="stn-pushFig">
-            {head(7, 11)}
-            <path d="M9 12 L15 15"/>
-            <path d="M15 15 L21 15"/>
-            <path d="M15 15 L11 23"/>
-            <path d="M15 15 L18 23"/>
+            {head(7, 12, 2)}
+            <path d="M8.5 13 L16 17"/>
+            <path d="M14 16 L20 18"/>
+            <path d="M16 17 L10 25"/>
+            <path d="M16 17 L18 25"/>
           </g>
-          <rect x="20" y="20" width="9" height="4" rx="0.5"/>
-          <line x1="21" y1="20" x2="20" y2="15"/>
-          <line x1="28" y1="20" x2="29" y2="15"/>
+          <rect x="19" y="21" width="10" height="3" rx="0.4"/>
+          <line x1="22" y1="21" x2="22" y2="18"/>
+          <line x1="26" y1="21" x2="26" y2="18"/>
         </svg>
       );
     case 'sledPull':
