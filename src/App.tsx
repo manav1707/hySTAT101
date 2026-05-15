@@ -1098,74 +1098,117 @@ function StationIcon({ id, size = 22 }: { id: string; size?: number }) {
   const head = (cx: number, cy: number, r = 2.2) => <circle cx={cx} cy={cy} r={r} fill="currentColor" />;
   switch (id) {
     case 'run':
+      // Forward-leaning runner: high knee in front, back leg extended,
+      // arms swinging in opposition. Two-frame swap.
       return (
         <svg {...svgProps}>
           <g className="stn-runA">
-            {head(17, 5)}<path d="M17 8 L15 17"/><path d="M15 17 L20 23"/><path d="M15 17 L11 23"/>
-            <path d="M15.5 11 L20 8"/><path d="M15.5 11 L11 14"/>
+            {head(20, 5)}
+            <path d="M20 7.5 L17 13 L14 18"/>
+            <path d="M14 18 L20 16 L22 21"/>
+            <path d="M14 18 L10 22 L6 26"/>
+            <path d="M16 12 L13 16"/>
+            <path d="M16 12 L19 9 L22 12"/>
           </g>
           <g className="stn-runB">
-            {head(17, 5)}<path d="M17 8 L15 17"/><path d="M15 17 L11 23"/><path d="M15 17 L20 23"/>
-            <path d="M15.5 11 L11 8"/><path d="M15.5 11 L20 14"/>
+            {head(20, 5)}
+            <path d="M20 7.5 L17 13 L14 18"/>
+            <path d="M14 18 L10 22 L6 26"/>
+            <path d="M14 18 L20 16 L22 21"/>
+            <path d="M16 12 L19 9 L22 12"/>
+            <path d="M16 12 L13 16"/>
           </g>
         </svg>
       );
     case 'skierg':
+      // SkiErg machine: small wedge at top with cables hanging down to a
+      // figure standing below, arms reaching UP gripping the cables.
       return (
         <svg {...svgProps}>
-          <line className="stn-skiCord" x1="12" y1="2" x2="12" y2="11"/>
-          <line className="stn-skiCord" x1="20" y1="2" x2="20" y2="11"/>
-          {head(16, 8)}
-          <path d="M16 11 L16 20"/>
-          <g className="stn-skiArm"><path d="M16 11 L12 11"/><path d="M16 11 L20 11"/></g>
-          <path d="M16 20 L13 27"/><path d="M16 20 L19 27"/>
+          <path d="M13 2 L19 2 L20 6 L12 6 Z"/>
+          <line className="stn-skiCord" x1="14" y1="6" x2="14" y2="13"/>
+          <line className="stn-skiCord" x1="18" y1="6" x2="18" y2="13"/>
+          {head(16, 14)}
+          <path d="M16 16.5 L16 23"/>
+          <g className="stn-skiArm">
+            <path d="M16 17 L14 13"/>
+            <path d="M16 17 L18 13"/>
+          </g>
+          <path d="M16 23 L13 29"/>
+          <path d="M16 23 L19 29"/>
         </svg>
       );
     case 'sledPush':
+      // Body nearly horizontal pushing a low sled: head forward-low,
+      // torso diagonal, arms straight out onto the sled top.
       return (
         <svg {...svgProps}>
           <g className="stn-pushFig">
-            {head(10, 7)}<path d="M10 10 L13 17"/><path d="M13 17 L18 14"/>
-            <path d="M13 17 L10 25"/><path d="M13 17 L17 24"/>
+            {head(7, 11)}
+            <path d="M9 12 L15 15"/>
+            <path d="M15 15 L21 15"/>
+            <path d="M15 15 L11 23"/>
+            <path d="M15 15 L18 23"/>
           </g>
-          <rect x="20" y="22" width="9" height="5" rx="0.5"/>
-          <line x1="20" y1="22" x2="18" y2="20"/>
+          <rect x="20" y="20" width="9" height="4" rx="0.5"/>
+          <line x1="21" y1="20" x2="20" y2="15"/>
+          <line x1="28" y1="20" x2="29" y2="15"/>
         </svg>
       );
     case 'sledPull':
+      // Upright figure pulling a rope that runs down at angle to a low
+      // sled. Body has slight backward lean, rope is the animated piece.
       return (
         <svg {...svgProps}>
           <g className="stn-pullFig">
-            {head(22, 7)}<path d="M22 10 L19 17"/><path d="M19 17 L14 16"/>
-            <path d="M19 17 L22 25"/><path d="M19 17 L15 24"/>
+            {head(20, 5)}
+            <path d="M20 7.5 L18 14 L17 20"/>
+            <path d="M18 13 L14 17"/>
+            <path d="M18 13 L20 16"/>
+            <path d="M17 20 L14 27"/>
+            <path d="M17 20 L21 27"/>
           </g>
-          <line className="stn-rope" x1="14" y1="16" x2="6" y2="22"/>
-          <rect x="2" y="22" width="6" height="4" rx="0.5"/>
+          <line className="stn-rope" x1="14" y1="17" x2="5" y2="23"/>
+          <rect x="2" y="23" width="7" height="4" rx="0.5"/>
         </svg>
       );
     case 'burpee':
+      // Jump-phase burpee: arms raised UP in V, legs slightly spread,
+      // figure bouncing on a ground line.
       return (
         <svg {...svgProps}>
           <g className="stn-burpee">
-            {head(16, 6)}<path d="M16 9 L16 18"/>
-            <path d="M16 12 L11 9"/><path d="M16 12 L21 9"/>
-            <path d="M16 18 L12 27"/><path d="M16 18 L20 27"/>
+            {head(16, 6)}
+            <path d="M16 8.5 L16 19"/>
+            <path d="M16 11 L11 5"/>
+            <path d="M16 11 L21 5"/>
+            <path d="M16 19 L12 27"/>
+            <path d="M16 19 L20 27"/>
           </g>
-          <line x1="6" y1="28" x2="26" y2="28"/>
+          <line x1="5" y1="29" x2="27" y2="29"/>
         </svg>
       );
     case 'rowing':
+      // Seated side-view on a rower: thigh horizontal, shin down to the
+      // footrest, arms pulling the handle back. Two-frame catch/finish swap.
       return (
         <svg {...svgProps}>
           <g className="stn-rowA">
-            {head(18, 9)}<path d="M18 12 L15 18"/><path d="M15 18 L8 17"/>
-            <path d="M15 18 L22 22"/><line x1="8" y1="17" x2="3" y2="13"/>
+            {head(16, 7)}
+            <path d="M16 9.5 L13 16"/>
+            <path d="M13 16 L7 14"/>
+            <line x1="7" y1="14" x2="3" y2="12"/>
+            <path d="M13 16 L21 16 L24 22"/>
           </g>
           <g className="stn-rowB">
-            {head(14, 8)}<path d="M14 11 L13 17"/><path d="M13 17 L8 13"/>
-            <path d="M13 17 L17 22"/><line x1="8" y1="13" x2="3" y2="13"/>
+            {head(13, 8)}
+            <path d="M13 10.5 L12 16"/>
+            <path d="M12 16 L6 12"/>
+            <line x1="6" y1="12" x2="3" y2="12"/>
+            <path d="M12 16 L19 18 L23 22"/>
           </g>
           <line x1="3" y1="25" x2="29" y2="25"/>
+          <circle cx="24" cy="22" r="0.8" fill="currentColor"/>
         </svg>
       );
     case 'farmers':
