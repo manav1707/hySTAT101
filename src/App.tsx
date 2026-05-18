@@ -386,6 +386,173 @@ const STATION_TIME_RANGES = {
   lunges: [320, 200], wallballs: [480, 320],
 };
 
+// Categorization table for exercises that DON'T have a Hyrox station equivalent.
+// Runs only when Hyrox keyword matching fails — so we don't fake-map curls to a
+// station, we just tell the user what muscle group their complementary work hit.
+// Ordering: multi-word specifics first; entries that share substrings with later
+// catch-alls must precede them (e.g. 'leg press' before any bare press keyword,
+// 'tricep pulldown' before 'pulldown'). Substring match via String.includes().
+type ExCategory = 'push' | 'pull' | 'legs' | 'core' | 'cardio' | 'olympic';
+const COMPLEMENTARY_KEYWORDS: Array<[string, ExCategory]> = [
+  // ── Olympic / full-body — first because they contain 'press', 'pull', etc. ──
+  ['clean and jerk', 'olympic'], ['clean & jerk', 'olympic'], ['c&j', 'olympic'],
+  ['power clean', 'olympic'], ['hang clean', 'olympic'], ['squat clean', 'olympic'],
+  ['clean pull', 'olympic'], ['clean & press', 'olympic'], ['clean and press', 'olympic'],
+  ['power snatch', 'olympic'], ['hang snatch', 'olympic'], ['snatch pull', 'olympic'],
+  ['split jerk', 'olympic'], ['push jerk', 'olympic'],
+  ['muscle up', 'olympic'], ['muscle-up', 'olympic'], ['muscleup', 'olympic'],
+  ['turkish get up', 'olympic'], ['turkish get-up', 'olympic'], ['get-up', 'olympic'], ['getup', 'olympic'],
+  ['clean', 'olympic'], ['snatch', 'olympic'], ['jerk', 'olympic'],
+
+  // ── Push (chest, shoulders, triceps) ──
+  // Specific presses first so generic ones don't shadow them
+  ['close grip bench', 'push'], ['close-grip bench', 'push'],
+  ['incline bench', 'push'], ['decline bench', 'push'], ['flat bench', 'push'],
+  ['incline press', 'push'], ['decline press', 'push'], ['flat press', 'push'],
+  ['dumbbell bench', 'push'], ['db bench', 'push'],
+  ['overhead press', 'push'], ['shoulder press', 'push'], ['military press', 'push'],
+  ['arnold press', 'push'], ['z press', 'push'], ['sots press', 'push'],
+  ['landmine press', 'push'], ['push press', 'push'], ['push-press', 'push'], ['pushpress', 'push'],
+  ['seated press', 'push'], ['standing press', 'push'], ['strict press', 'push'],
+  ['floor press', 'push'], ['ohp', 'push'],
+  ['db press', 'push'], ['dumbbell press', 'push'], ['barbell press', 'push'],
+  // Triceps
+  ['tricep pushdown', 'push'], ['tricep extension', 'push'], ['tricep kickback', 'push'],
+  ['tricep dip', 'push'], ['skull crusher', 'push'], ['skullcrusher', 'push'],
+  ['lying tricep', 'push'], ['overhead tricep', 'push'], ['french press', 'push'],
+  ['jm press', 'push'], ['rope pushdown', 'push'], ['cable pushdown', 'push'],
+  ['tate press', 'push'],
+  ['pushdown', 'push'],
+  // Dips
+  ['ring dip', 'push'], ['bench dip', 'push'], ['parallel bar dip', 'push'],
+  ['dips', 'push'], ['dip', 'push'],
+  // Chest flyes
+  ['chest fly', 'push'], ['chest flye', 'push'], ['pec deck', 'push'], ['pec fly', 'push'],
+  ['cable crossover', 'push'], ['cable fly', 'push'], ['dumbbell fly', 'push'], ['db fly', 'push'],
+  ['svend press', 'push'],
+  // Push-up variants
+  ['handstand pushup', 'push'], ['handstand push-up', 'push'], ['hspu', 'push'],
+  ['pike pushup', 'push'], ['pike push-up', 'push'],
+  ['diamond pushup', 'push'], ['diamond push-up', 'push'],
+  ['archer pushup', 'push'], ['plyo pushup', 'push'], ['clap pushup', 'push'],
+  ['hindu pushup', 'push'], ['ring pushup', 'push'],
+  ['pushup', 'push'], ['push-up', 'push'], ['push up', 'push'], ['pushups', 'push'], ['push ups', 'push'], ['push-ups', 'push'],
+  // Shoulders (delts)
+  ['lateral raise', 'push'], ['side raise', 'push'], ['db lateral', 'push'],
+  ['front raise', 'push'], ['rear delt fly', 'push'], ['rear delt flye', 'push'],
+  ['rear delt raise', 'push'], ['reverse fly', 'push'], ['reverse flye', 'push'],
+  ['face pull', 'push'], ['cuban press', 'push'],
+
+  // ── Pull (back, biceps) ──
+  ['weighted pull-up', 'pull'], ['weighted pullup', 'pull'],
+  ['neutral grip pull', 'pull'], ['wide grip pull', 'pull'], ['close grip pull', 'pull'],
+  ['pull-up', 'pull'], ['pullup', 'pull'], ['pull up', 'pull'],
+  ['pull-ups', 'pull'], ['pullups', 'pull'], ['pull ups', 'pull'],
+  ['chin-up', 'pull'], ['chinup', 'pull'], ['chin up', 'pull'], ['chinups', 'pull'],
+  ['lat pulldown', 'pull'], ['lat pull-down', 'pull'], ['cable pulldown', 'pull'],
+  ['pulldown', 'pull'],
+  // Rows (back) — 'row' alone stays Hyrox-mapped to rowing erg
+  ['bent-over row', 'pull'], ['bent over row', 'pull'],
+  ['t-bar row', 'pull'], ['t bar row', 'pull'], ['tbar row', 'pull'],
+  ['cable row', 'pull'], ['seated row', 'pull'],
+  ['chest supported row', 'pull'], ['chest-supported row', 'pull'],
+  ['pendlay row', 'pull'], ['yates row', 'pull'], ['meadows row', 'pull'], ['kroc row', 'pull'],
+  ['inverted row', 'pull'], ['ring row', 'pull'],
+  ['renegade row', 'pull'], ['single-arm row', 'pull'], ['one arm row', 'pull'], ['one-arm row', 'pull'],
+  ['upright row', 'pull'],
+  // Pullovers
+  ['pullover', 'pull'], ['db pullover', 'pull'],
+  // Shrugs
+  ['barbell shrug', 'pull'], ['db shrug', 'pull'], ['trap bar shrug', 'pull'], ['shrug', 'pull'],
+  // Biceps
+  ['hammer curl', 'pull'], ['preacher curl', 'pull'], ['concentration curl', 'pull'],
+  ['incline curl', 'pull'], ['spider curl', 'pull'], ['cable curl', 'pull'],
+  ['ez bar curl', 'pull'], ['ez-bar curl', 'pull'], ['barbell curl', 'pull'],
+  ['dumbbell curl', 'pull'], ['db curl', 'pull'],
+  ['zottman curl', 'pull'], ['reverse curl', 'pull'],
+  ['bicep curl', 'pull'], ['biceps curl', 'pull'],
+  ['21s', 'pull'],
+  // Hip-hinge (back-chain pull)
+  ['good morning', 'pull'], ['good-morning', 'pull'],
+
+  // ── Legs (quads, hams, glutes, calves) ──
+  // Squat variants beyond what Hyrox covers
+  ['leg press', 'legs'], ['hack squat', 'legs'], ['pendulum squat', 'legs'],
+  ['sissy squat', 'legs'], ['pistol squat', 'legs'], ['cossack squat', 'legs'],
+  ['zercher squat', 'legs'], ['box squat', 'legs'], ['pause squat', 'legs'],
+  ['hatfield squat', 'legs'], ['jefferson squat', 'legs'],
+  // Step-ups
+  ['box step-up', 'legs'], ['step-up', 'legs'], ['step up', 'legs'], ['stepup', 'legs'],
+  // Hamstrings
+  ['lying leg curl', 'legs'], ['seated leg curl', 'legs'], ['leg curl', 'legs'],
+  ['nordic curl', 'legs'], ['nordics', 'legs'], ['nordic hamstring', 'legs'],
+  ['glute ham raise', 'legs'], ['glute-ham raise', 'legs'], ['ghr', 'legs'],
+  ['hamstring curl', 'legs'], ['ham curl', 'legs'],
+  // Quads
+  ['leg extension', 'legs'], ['leg ext', 'legs'], ['quad extension', 'legs'],
+  // Glutes
+  ['hip thrust', 'legs'], ['glute bridge', 'legs'], ['hip bridge', 'legs'],
+  ['glute kickback', 'legs'], ['cable kickback', 'legs'], ['donkey kick', 'legs'],
+  ['frog pump', 'legs'], ['abductor', 'legs'], ['adductor', 'legs'],
+  // Calves
+  ['calf raise', 'legs'], ['standing calf', 'legs'], ['seated calf', 'legs'],
+  ['donkey calf', 'legs'], ['calves', 'legs'],
+  // Posterior chain
+  ['back extension', 'legs'], ['hyperextension', 'legs'], ['hyper extension', 'legs'],
+  ['reverse hyper', 'legs'], ['45 degree extension', 'legs'],
+  // Plyo legs
+  ['jump squat', 'legs'], ['tuck jump', 'legs'], ['skater', 'legs'],
+
+  // ── Core ──
+  ['hanging leg raise', 'core'], ['lying leg raise', 'core'], ['leg raise', 'core'],
+  ['toes to bar', 'core'], ['toes-to-bar', 'core'], ['t2b', 'core'],
+  ['knee raise', 'core'], ['hanging knee', 'core'],
+  ['hollow hold', 'core'], ['hollow rock', 'core'],
+  ['v-up', 'core'], ['vup', 'core'], ['v up', 'core'],
+  ['sit-up', 'core'], ['situp', 'core'], ['sit up', 'core'], ['sit-ups', 'core'], ['situps', 'core'],
+  ['cable crunch', 'core'], ['abs crunch', 'core'], ['reverse crunch', 'core'], ['crunch', 'core'],
+  ['russian twist', 'core'], ['russian-twist', 'core'],
+  ['side plank', 'core'], ['plank', 'core'],
+  ['dead bug', 'core'], ['dead-bug', 'core'], ['deadbug', 'core'],
+  ['bird dog', 'core'], ['bird-dog', 'core'],
+  ['bear crawl', 'core'], ['crab walk', 'core'],
+  ['mountain climber', 'core'],
+  ['ab wheel', 'core'], ['ab roller', 'core'], ['ab rollout', 'core'],
+  ['dragon flag', 'core'], ['windshield wiper', 'core'],
+  ['pallof press', 'core'], ['pallof', 'core'],
+  ['woodchop', 'core'], ['wood chop', 'core'], ['woodchopper', 'core'],
+  ['hollow', 'core'], ['abs', 'core'], ['core', 'core'],
+
+  // ── Cardio (anything not Hyrox-mapped) ──
+  ['jump rope', 'cardio'], ['jumprope', 'cardio'], ['skipping rope', 'cardio'], ['skipping', 'cardio'],
+  ['double under', 'cardio'], ['double-under', 'cardio'], ['doubleunder', 'cardio'],
+  ['single under', 'cardio'], ['single-under', 'cardio'],
+  ['battle rope', 'cardio'], ['battle-rope', 'cardio'],
+  ['stair master', 'cardio'], ['stairmaster', 'cardio'], ['stair climber', 'cardio'],
+  ['jacobs ladder', 'cardio'], ["jacob's ladder", 'cardio'],
+  ['elliptical', 'cardio'], ['cross trainer', 'cardio'], ['crosstrainer', 'cardio'],
+  ['treadmill', 'cardio'], ['airdyne', 'cardio'], ['air bike', 'cardio'], ['assault bike', 'cardio'],
+  ['swim', 'cardio'], ['swimming', 'cardio'], ['laps', 'cardio'],
+  ['stairs', 'cardio'], ['hike', 'cardio'], ['hiking', 'cardio'],
+];
+
+function findExCategory(line: string): ExCategory | null {
+  const lower = line.toLowerCase();
+  for (const [kw, cat] of COMPLEMENTARY_KEYWORDS) {
+    if (lower.includes(kw)) return cat;
+  }
+  return null;
+}
+
+const CAT_COLORS: Record<ExCategory, string> = {
+  push: '#EF4444',
+  pull: '#3B82F6',
+  legs: '#10B981',
+  core: '#A855F7',
+  cardio: '#F97316',
+  olympic: '#F59E0B',
+};
+
 function translatedToStationTime(translated) {
   const meta = getStationMeta(translated.station);
   if (translated.station === 'run' || !STATION_TIME_RANGES[translated.station]) return null;
@@ -1806,11 +1973,17 @@ function WorkoutSummary({ workout, compact }) {
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${t.border}` }}>
           <div style={{ fontSize: 10, letterSpacing: 1.5, color: t.textSec, fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Complementary ({workout.extras.length})</div>
           <div style={{ display: 'grid', gap: 6 }}>
-            {workout.extras.map((ex: any, i: number) => (
-              <div key={i} style={{ fontSize: 12, color: t.textMute, paddingLeft: 4, borderLeft: `2px dashed ${t.borderInput}` }}>
-                <span style={{ marginLeft: 8 }}>{ex.raw}</span>
-              </div>
-            ))}
+            {workout.extras.map((ex: any, i: number) => {
+              const cat: ExCategory | null = ex.category ?? findExCategory(ex.raw || '');
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: t.textMute, paddingLeft: 4, borderLeft: `2px solid ${cat ? CAT_COLORS[cat] : t.borderInput}` }}>
+                  <span style={{ marginLeft: 8, flex: 1, minWidth: 0 }}>{ex.raw}</span>
+                  {cat && (
+                    <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: 1.1, color: CAT_COLORS[cat], background: `${CAT_COLORS[cat]}1F`, padding: '2px 6px', borderRadius: 3, textTransform: 'uppercase' }}>{cat}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -2460,7 +2633,7 @@ function PasteParser({ onImport, lbl, inp }) {
         }
         matched.push({ original: displayRaw, exId: g.match.id, name: g.match.name, station: g.match.station, match: g.match.match, inputs: vals, val: g.match.calc(vals) });
       } else {
-        unmatched.push({ raw: displayRaw, sets, reps, weight, distance });
+        unmatched.push({ raw: displayRaw, sets, reps, weight, distance, category: findExCategory(g.header) });
       }
     }
     return { matched, unmatched };
@@ -2513,8 +2686,13 @@ function PasteParser({ onImport, lbl, inp }) {
           <div style={{ fontSize: 12, fontWeight: 700, color: t.textSec, marginBottom: 10 }}>COMPLEMENTARY ({parsed.unmatched.length}) <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· no Hyrox equivalent, recorded as-is</span></div>
           <div style={{ display: 'grid', gap: 8 }}>
             {parsed.unmatched.map((u, i) => (
-              <div key={i} style={{ background: t.surfaceAlt, borderRadius: 12, padding: '12px 14px', borderLeft: `4px dashed ${t.borderInput}` }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>{u.raw}</div>
+              <div key={i} style={{ background: t.surfaceAlt, borderRadius: 12, padding: '12px 14px', borderLeft: `4px solid ${u.category ? CAT_COLORS[u.category] : t.borderInput}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: t.text, flex: 1, minWidth: 0 }}>{u.raw}</div>
+                  {u.category && (
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, color: CAT_COLORS[u.category], background: `${CAT_COLORS[u.category]}1F`, padding: '3px 7px', borderRadius: 4, textTransform: 'uppercase' }}>{u.category}</span>
+                  )}
+                </div>
                 {(u.sets || u.reps || u.weight || u.distance) && (
                   <div style={{ fontSize: 11, color: t.textSec, marginTop: 3 }}>
                     {u.sets != null && u.reps != null && `${u.sets}×${u.reps}`}
@@ -2715,21 +2893,29 @@ function TranslateMode({ translated, setTranslated, extras, setExtras, inp, lbl,
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: t.textSec, marginBottom: 12, textTransform: 'uppercase' }}>Complementary ({extras.length}) <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>· logged but not scored</span></div>
           <div style={{ display: 'grid', gap: 10 }}>
-            {extras.map((ex: any, i: number) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: t.card, border: `1px dashed ${t.borderInput}`, borderRadius: 14, padding: '12px 16px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{ex.raw}</div>
-                  {(ex.sets || ex.reps || ex.weight || ex.distance) && (
-                    <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>
-                      {ex.sets != null && ex.reps != null && `${ex.sets}×${ex.reps}`}
-                      {ex.weight != null && ` · ${ex.weight}kg`}
-                      {ex.distance != null && ` · ${ex.distance >= 1000 ? `${(ex.distance / 1000).toFixed(1)}km` : `${ex.distance}m`}`}
+            {extras.map((ex: any, i: number) => {
+              const cat: ExCategory | null = ex.category ?? findExCategory(ex.raw || '');
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: t.card, borderLeft: `3px solid ${cat ? CAT_COLORS[cat] : t.borderInput}`, border: `1px dashed ${t.borderInput}`, borderRadius: 14, padding: '12px 16px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text, flex: 1, minWidth: 0 }}>{ex.raw}</div>
+                      {cat && (
+                        <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, color: CAT_COLORS[cat], background: `${CAT_COLORS[cat]}1F`, padding: '3px 7px', borderRadius: 4, textTransform: 'uppercase' }}>{cat}</span>
+                      )}
                     </div>
-                  )}
+                    {(ex.sets || ex.reps || ex.weight || ex.distance) && (
+                      <div style={{ fontSize: 12, color: t.textSec, marginTop: 2 }}>
+                        {ex.sets != null && ex.reps != null && `${ex.sets}×${ex.reps}`}
+                        {ex.weight != null && ` · ${ex.weight}kg`}
+                        {ex.distance != null && ` · ${ex.distance >= 1000 ? `${(ex.distance / 1000).toFixed(1)}km` : `${ex.distance}m`}`}
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={() => removeExtra(i)} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 22, padding: 4, fontFamily: FONT }}>×</button>
                 </div>
-                <button onClick={() => removeExtra(i)} style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 22, padding: 4, fontFamily: FONT }}>×</button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -3530,12 +3716,18 @@ function EditWorkoutSheet({ workout, onSave, onClose }: any) {
           <div style={{ marginBottom: 14 }}>
             <div style={lbl}>COMPLEMENTARY ({extras.length})</div>
             <div style={{ display: 'grid', gap: 6 }}>
-              {extras.map((ex: any, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: t.surfaceAlt, borderRadius: 10, padding: '10px 12px', border: `1px dashed ${t.borderInput}` }}>
-                  <div style={{ flex: 1, fontSize: 13, color: t.text }}>{ex.raw}</div>
-                  <button onClick={() => removeExtra(i)} aria-label="Remove" style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 20, fontFamily: FONT, padding: 0 }}>×</button>
-                </div>
-              ))}
+              {extras.map((ex: any, i: number) => {
+                const cat: ExCategory | null = ex.category ?? findExCategory(ex.raw || '');
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: t.surfaceAlt, borderRadius: 10, padding: '10px 12px', border: `1px dashed ${t.borderInput}`, borderLeft: `3px solid ${cat ? CAT_COLORS[cat] : t.borderInput}` }}>
+                    <div style={{ flex: 1, fontSize: 13, color: t.text }}>{ex.raw}</div>
+                    {cat && (
+                      <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 1.2, color: CAT_COLORS[cat], background: `${CAT_COLORS[cat]}1F`, padding: '3px 7px', borderRadius: 4, textTransform: 'uppercase' }}>{cat}</span>
+                    )}
+                    <button onClick={() => removeExtra(i)} aria-label="Remove" style={{ background: 'none', border: 'none', color: t.textSec, cursor: 'pointer', fontSize: 20, fontFamily: FONT, padding: 0 }}>×</button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
