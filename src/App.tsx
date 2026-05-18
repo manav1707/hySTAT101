@@ -1851,6 +1851,7 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
   const { t } = useTheme();
   const [editing, setEditing] = useState<any>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const weekAgo = new Date(Date.now() - 7 * 86400000);
   const thisWeek = workouts.filter(w => new Date(w.date) >= weekAgo).length;
   const lastWorkout = workouts.length ? workouts[workouts.length - 1] : null;
@@ -2017,18 +2018,43 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
               const stationCount = Object.values(w.stations || {}).filter((s: any) => s?.time).length + (w.translated?.length || 0);
               const dt = new Date(w.date);
               const label = dt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+              const isConfirming = confirmDeleteId === w.id;
               return (
-                <button key={w.id} onClick={() => setEditing(w)} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                  background: t.card, border: `1px solid ${t.border}`, borderRadius: 12,
-                  padding: '10px 12px', cursor: 'pointer', fontFamily: FONT, textAlign: 'left',
+                <div key={w.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  background: isConfirming ? '#FEE2E2' : t.card,
+                  border: `1px solid ${isConfirming ? '#DC2626' : t.border}`, borderRadius: 12,
+                  padding: '8px 10px', fontFamily: FONT,
                 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{label}</div>
-                    <div style={{ fontSize: 11, color: t.textSec, marginTop: 2 }}>{stationCount} element{stationCount === 1 ? '' : 's'}{w.runs?.count ? ` · ${w.runs.count} run${w.runs.count === 1 ? '' : 's'}` : ''}</div>
-                  </div>
-                  <span style={{ fontSize: 18, color: t.textSec, lineHeight: 1, paddingRight: 4 }}>⋯</span>
-                </button>
+                  {isConfirming ? (
+                    <>
+                      <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: '#991B1B', minWidth: 0 }}>
+                        Delete {label}?
+                      </div>
+                      <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '7px 12px', fontSize: 12, fontWeight: 700, background: '#fff', color: '#000', border: '1px solid #D1D1D6', borderRadius: 8, cursor: 'pointer', fontFamily: FONT }}>Cancel</button>
+                      <button onClick={async () => { await deleteWorkout(w.id); setConfirmDeleteId(null); }} style={{ padding: '7px 12px', fontSize: 12, fontWeight: 700, background: '#DC2626', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: FONT }}>Delete</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => setEditing(w)} style={{
+                        flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12,
+                        background: 'none', border: 'none', padding: '2px 2px', cursor: 'pointer',
+                        fontFamily: FONT, textAlign: 'left',
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{label}</div>
+                          <div style={{ fontSize: 11, color: t.textSec, marginTop: 2 }}>{stationCount} element{stationCount === 1 ? '' : 's'}{w.runs?.count ? ` · ${w.runs.count} run${w.runs.count === 1 ? '' : 's'}` : ''}</div>
+                        </div>
+                        <span style={{ fontSize: 18, color: t.textSec, lineHeight: 1 }}>⋯</span>
+                      </button>
+                      <button onClick={() => setConfirmDeleteId(w.id)} aria-label="Delete session" style={{
+                        padding: '8px', background: 'transparent', border: `1px solid ${t.border}`,
+                        borderRadius: 8, cursor: 'pointer', color: '#DC2626', display: 'inline-flex',
+                        alignItems: 'center', justifyContent: 'center', fontFamily: FONT,
+                      }}><Icon C={Trash2} size={13} color="#DC2626" /></button>
+                    </>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -2236,7 +2262,7 @@ function PasteParser({ onImport, lbl, inp }) {
   const [tried, setTried] = useState(false);
 
   const parsePastedExercises = (text) => {
-    const lines = text.split(/\n|→|,(?=\s*[A-Z])/g).map(l => l.trim()).filter(l => l.length > 3);
+    const rawLines = text.split(/\n|→|,(?=\s*[A-Z])/g).map(l => l.trim()).filter(l => l.length > 1);
     // Order matters: more-specific multi-word keys must precede their single-word
     // overlaps (e.g. 'sandbag lunge' before 'lunge', 'burpee bj' before 'burpee')
     // so the right EQUIV entry wins. Hyrox direct stations come before generic
@@ -2279,58 +2305,160 @@ function PasteParser({ onImport, lbl, inp }) {
       // Fallback: bare 'row' in a Hyrox context almost always means the erg.
       ['row', 'rowing_direct'],
     ];
-    const matched: any[] = [];
-    const unmatched: any[] = [];
-    for (const line of lines) {
+
+    // Tokens that are pure equipment/units — a line whose only alphabetic content
+    // is in this set is treated as per-set data attached to the prior header,
+    // not as a standalone exercise. Lets us group:
+    //   Bicep cable curls          ← header
+    //   15kg*12                    ← set
+    //   15kg*12                    ← set
+    const UNIT_RE = /^(kg|lb|lbs|m|km|mi|min|mins|minute|minutes|sec|secs|second|seconds|rep|reps|set|sets|dumbell|dumbells|dumbbell|dumbbells|db|barbell|bb|weight|weights|plate|plates|with|plus|and|x|×|each|side|per|of|a|the)$/i;
+
+    const hasExerciseContent = (line: string) => {
+      const tokens = line.split(/[\s\d.+*×x@,()/_\-]+/i).filter(Boolean);
+      return tokens.some(tok => /^[a-z']/i.test(tok) && !UNIT_RE.test(tok));
+    };
+
+    const extractSetData = (line: string) => {
+      // "Nkg × M" — weight × rep count for a single set
+      const wtTimesReps = line.match(/(\d+(?:\.\d+)?)\s*kg\s*[*x×]\s*(\d+)/i);
+      // "N × M<unit>" — sets × per-set distance (e.g. "4×400m", "5x1km")
+      const setsXdist = !wtTimesReps ? line.match(/(\d+)\s*[*x×]\s*(\d+(?:\.\d+)?)\s*(km|m)\b/i) : null;
+      // "N × M" — sets × reps (only when M isn't followed by a unit)
+      const setsXreps = !wtTimesReps && !setsXdist ? line.match(/(\d+)\s*[*x×]\s*(\d+)\b/i) : null;
+      const weightMatch = line.match(/(\d+(?:\.\d+)?)\s*kg/i);
+      const repsOnly = line.match(/(\d+)\s*reps?\b/i);
+      // "* 16" / "× 16" alone (no leading set count) → bare rep count
+      const repsFromStar = !setsXreps && !setsXdist && !wtTimesReps ? line.match(/[*×]\s*(\d+)/) : null;
+      const distM = line.match(/(\d+(?:\.\d+)?)\s*m(?!in|\w)/i);
+      const distKm = line.match(/(\d+(?:\.\d+)?)\s*km/i);
+
+      let sets: number | null = null;
+      let reps: number | null = null;
+      let distance: number | null = null;
+      if (wtTimesReps) {
+        reps = parseInt(wtTimesReps[2]);
+      } else if (setsXdist) {
+        sets = parseInt(setsXdist[1]);
+        const d = parseFloat(setsXdist[2]);
+        distance = setsXdist[3].toLowerCase() === 'km' ? d * 1000 : d;
+      } else if (setsXreps) {
+        sets = parseInt(setsXreps[1]);
+        reps = parseInt(setsXreps[2]);
+      } else if (repsOnly) {
+        reps = parseInt(repsOnly[1]);
+      } else if (repsFromStar) {
+        reps = parseInt(repsFromStar[1]);
+      }
+      if (distance == null) {
+        distance = distKm ? parseFloat(distKm[1]) * 1000 : (distM ? parseFloat(distM[1]) : null);
+      }
+      return { sets, reps, weight: weightMatch ? parseFloat(weightMatch[1]) : null, distance };
+    };
+
+    const findMatch = (line: string) => {
       const lower = line.toLowerCase();
-      let match = null;
       for (const [kw, id] of keywords) {
-        if (lower.includes(kw)) { match = EQUIV.find(e => e.id === id); if (match) break; }
+        if (lower.includes(kw)) {
+          const m = EQUIV.find(e => e.id === id);
+          if (m) return m;
+        }
       }
       // Whole-word run detection: 'Run 5km', 'Running 8km', 'Long run 6km', '4×1km Run'.
       // \brun\b avoids false positives in 'truncate', 'crunches', etc.
-      // If a NxM pattern is present, treat as 1km intervals; otherwise long run.
-      if (!match && /\brun(?:ning|s)?\b/.test(lower)) {
-        const isInterval = /\d+\s*[x×]\s*\d+/i.test(lower);
-        match = EQUIV.find(e => e.id === (isInterval ? 'intervals' : 'longrun'));
+      if (/\brun(?:ning|s)?\b/.test(lower)) {
+        const isInterval = /\d+\s*[*x×]\s*\d+/i.test(lower);
+        return EQUIV.find(e => e.id === (isInterval ? 'intervals' : 'longrun')) || null;
       }
-      if (!match) {
-        // Capture quick numeric hints so the workout still records *what* the
-        // user did, even if there's no Hyrox station to map it to.
-        const setsXreps = line.match(/(\d+)\s*[x×]\s*(\d+)/i);
-        const weight = line.match(/(\d+(?:\.\d+)?)\s*kg/i);
-        const distM = line.match(/(\d+(?:\.\d+)?)\s*m(?!in|\w)/i);
-        const distKm = line.match(/(\d+(?:\.\d+)?)\s*km/i);
-        unmatched.push({
-          raw: line,
-          sets: setsXreps ? parseInt(setsXreps[1]) : null,
-          reps: setsXreps ? parseInt(setsXreps[2]) : null,
-          weight: weight ? parseFloat(weight[1]) : null,
-          distance: distKm ? parseFloat(distKm[1]) * 1000 : (distM ? parseFloat(distM[1]) : null),
-        });
-        continue;
-      }
-      const setsXreps = line.match(/(\d+)\s*[x×]\s*(\d+)/i);
-      const weight = line.match(/(\d+(?:\.\d+)?)\s*kg/i);
-      const distM = line.match(/(\d+(?:\.\d+)?)\s*m(?!in|\w)/i);
-      const distKm = line.match(/(\d+(?:\.\d+)?)\s*km/i);
-      const level = line.match(/(?:lvl|level)\s*(\d+)/i);
-      const vals = {};
-      // For matches with no 'sets' field (intervals: reps-only run count), the
-      // first number of an NxM pair is the rep count, not the second.
-      const hasSets = match.fields.some((f: any) => f.k === 'sets');
-      for (const f of match.fields) {
-        vals[f.k] = f.d;
-        if (setsXreps) {
-          if (f.k === 'sets') vals[f.k] = parseInt(setsXreps[1]);
-          if (f.k === 'reps') vals[f.k] = parseInt(hasSets ? setsXreps[2] : setsXreps[1]);
+      return null;
+    };
+
+    // Normalize headers for dedup: strip numeric set/weight/rep tokens and unit
+    // words so "Cable abs curls 35kg*11" and "Cable abs curls 35kg*12" collapse
+    // to the same key and merge into one grouped exercise.
+    const normalizeHeader = (line: string) =>
+      line.toLowerCase()
+        .replace(/\d+(?:\.\d+)?\s*kg\s*[*x×]\s*\d+/g, '')
+        .replace(/\d+\s*[*x×]\s*\d+(?:\.\d+)?\s*(?:km|m)\b/g, '')
+        .replace(/\d+\s*[*x×]\s*\d+/g, '')
+        .replace(/\d+(?:\.\d+)?\s*(?:kg|lb|lbs)\b/g, '')
+        .replace(/\d+\s*reps?\b/g, '')
+        .replace(/\d+(?:\.\d+)?\s*(?:km|m)\b/g, '')
+        .replace(/[*×+&,/]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w && !UNIT_RE.test(w))
+        .join(' ')
+        .trim();
+
+    // Walk lines once, building groups: each header opens a group; following
+    // set-data-only lines append to it. A repeated header that normalizes to
+    // the same key as the current group keeps appending instead of opening a new one.
+    type Group = { header: string; match: any; setData: any[]; setLines: number };
+    const groups: Group[] = [];
+    let current: Group | null = null;
+    for (const line of rawLines) {
+      const hasEx = hasExerciseContent(line);
+      const data = extractSetData(line);
+      const hasData = data.reps != null || data.weight != null || data.distance != null || data.sets != null;
+
+      if (hasEx) {
+        const norm = normalizeHeader(line);
+        if (current && norm.length > 0 && normalizeHeader(current.header) === norm) {
+          if (hasData) { current.setData.push(data); current.setLines++; }
+        } else {
+          current = { header: line, match: findMatch(line), setData: [], setLines: 0 };
+          if (hasData) { current.setData.push(data); current.setLines = 1; }
+          groups.push(current);
         }
-        if (weight && f.k === 'weight') vals[f.k] = parseFloat(weight[1]);
-        if (distM && f.k === 'distance' && !distKm) vals[f.k] = parseFloat(distM[1]);
-        if (distKm && f.k === 'distance') vals[f.k] = parseFloat(distKm[1]);
-        if (level && f.k === 'level') vals[f.k] = parseInt(level[1]);
+      } else if (hasData) {
+        if (current) {
+          current.setData.push(data); current.setLines++;
+        } else {
+          // Orphan set-data with no prior header — keep as standalone complementary.
+          current = { header: line, match: null, setData: [data], setLines: 1 };
+          groups.push(current);
+        }
       }
-      matched.push({ original: line, exId: match.id, name: match.name, station: match.station, match: match.match, inputs: vals, val: match.calc(vals) });
+    }
+
+    const matched: any[] = [];
+    const unmatched: any[] = [];
+    for (const g of groups) {
+      const explicitSets = g.setData.find(d => d.sets != null)?.sets ?? null;
+      // setLines is the per-set line count; explicitSets is "N×M" sets-count from
+      // a single line. Prefer explicit when present (e.g. "Squats 3×8" alone).
+      const sets = g.setLines > 1 ? g.setLines : (explicitSets ?? (g.setLines > 0 ? g.setLines : null));
+      const repVals = g.setData.map(d => d.reps).filter((v): v is number => v != null);
+      const reps = repVals.length ? Math.round(repVals.reduce((a, b) => a + b, 0) / repVals.length) : null;
+      const wtVals = g.setData.map(d => d.weight).filter((v): v is number => v != null);
+      const weight = wtVals.length ? Math.max(...wtVals) : null;
+      const distVals = g.setData.map(d => d.distance).filter((v): v is number => v != null);
+      const distance = distVals.length ? Math.max(...distVals) : null;
+      const displayRaw = g.setLines > 1 ? `${g.header} (${g.setLines} sets)` : g.header;
+
+      if (g.match) {
+        const hasSetsField = g.match.fields.some((f: any) => f.k === 'sets');
+        const hasRepsField = g.match.fields.some((f: any) => f.k === 'reps');
+        // Intervals have reps but no sets: "4×1km" parses as sets=4 with distance,
+        // and the run count belongs in reps. Promote sets→reps in that case.
+        let effectiveReps = reps;
+        if (!hasSetsField && hasRepsField && reps == null && explicitSets != null) {
+          effectiveReps = explicitSets;
+        }
+        const vals: any = {};
+        const lvlMatch = g.header.match(/(?:lvl|level)\s*(\d+)/i);
+        for (const f of g.match.fields) {
+          vals[f.k] = f.d;
+          if (f.k === 'sets' && sets != null) vals.sets = sets;
+          if (f.k === 'reps' && effectiveReps != null) vals.reps = effectiveReps;
+          if (f.k === 'weight' && weight != null) vals.weight = weight;
+          if (f.k === 'distance' && distance != null) vals.distance = distance;
+          if (f.k === 'level' && lvlMatch) vals.level = parseInt(lvlMatch[1]);
+        }
+        matched.push({ original: displayRaw, exId: g.match.id, name: g.match.name, station: g.match.station, match: g.match.match, inputs: vals, val: g.match.calc(vals) });
+      } else {
+        unmatched.push({ raw: displayRaw, sets, reps, weight, distance });
+      }
     }
     return { matched, unmatched };
   };
