@@ -178,6 +178,8 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
       50%      { box-shadow: 0 0 0 14px ${ACC}00, 0 0 50px 8px ${ACC}40; }
     }
     .hyrox-tour-card { animation: hyrox-tour-card-in 380ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .hyrox-edit-sheet-bg { animation: hyrox-tour-item-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .hyrox-edit-sheet-card { animation: hyrox-tour-card-in 320ms cubic-bezier(0.16, 1, 0.3, 1); }
     .hyrox-tour-icon { animation: hyrox-tour-item-in 360ms 100ms cubic-bezier(0.16, 1, 0.3, 1) both; }
     .hyrox-tour-name { animation: hyrox-tour-item-in 360ms 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
     .hyrox-tour-body { animation: hyrox-tour-item-in 360ms 260ms cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -185,7 +187,8 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
     @media (prefers-reduced-motion: reduce) {
       .hyrox-tab-panel { animation: none; }
       .hyrox-tabs button:active { transform: none; }
-      .hyrox-tour-card, .hyrox-tour-icon, .hyrox-tour-name, .hyrox-tour-body, .hyrox-tour-halo-anim { animation: none; }
+      .hyrox-tour-card, .hyrox-tour-icon, .hyrox-tour-name, .hyrox-tour-body, .hyrox-tour-halo-anim,
+      .hyrox-edit-sheet-bg, .hyrox-edit-sheet-card { animation: none; }
     }
     @keyframes hyrox-streak-pulse {
       0%, 100% { transform: scale(1); }
@@ -1965,7 +1968,7 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
         <EditWorkoutSheet
           workout={editing}
           onClose={() => setEditing(null)}
-          onSave={async (updated: any) => { await editWorkout(updated); setEditing(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+          onSave={async (updated: any) => { await editWorkout(updated); setEditing(null); }}
         />
       )}
 
@@ -3463,8 +3466,8 @@ function EditWorkoutSheet({ workout, onSave, onClose }: any) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }} onClick={onClose}>
-      <div style={{ background: t.bg, color: t.text, borderRadius: 18, padding: 22, maxWidth: 520, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
+    <div className="hyrox-edit-sheet-bg" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }} onClick={onClose}>
+      <div className="hyrox-edit-sheet-card" style={{ background: t.bg, color: t.text, borderRadius: 18, padding: 22, maxWidth: 520, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', border: `1px solid ${t.border}` }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: t.text, letterSpacing: -0.3 }}>Edit Workout</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.textSec, fontSize: 24, cursor: 'pointer', fontFamily: FONT, padding: 4 }}>×</button>
