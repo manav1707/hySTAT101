@@ -1965,7 +1965,7 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
         <EditWorkoutSheet
           workout={editing}
           onClose={() => setEditing(null)}
-          onSave={async (updated: any) => { await editWorkout(updated); setEditing(null); }}
+          onSave={async (updated: any) => { await editWorkout(updated); setEditing(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
         />
       )}
 
