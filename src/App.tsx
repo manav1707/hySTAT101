@@ -178,7 +178,8 @@ if (typeof document !== 'undefined' && !document.getElementById('hyrox-button-st
       50%      { box-shadow: 0 0 0 14px ${ACC}00, 0 0 50px 8px ${ACC}40; }
     }
     .hyrox-tour-card { animation: hyrox-tour-card-in 380ms cubic-bezier(0.16, 1, 0.3, 1); }
-    .hyrox-edit-sheet-bg { animation: hyrox-tour-item-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes hyrox-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .hyrox-edit-sheet-bg { animation: hyrox-fade-in 220ms ease-out; }
     .hyrox-edit-sheet-card { animation: hyrox-tour-card-in 320ms cubic-bezier(0.16, 1, 0.3, 1); }
     .hyrox-tour-icon { animation: hyrox-tour-item-in 360ms 100ms cubic-bezier(0.16, 1, 0.3, 1) both; }
     .hyrox-tour-name { animation: hyrox-tour-item-in 360ms 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -2224,10 +2225,11 @@ function Dashboard({ workouts, pbs, setTab, profile, editWorkout, deleteWorkout 
                         <span style={{ fontSize: 18, color: t.textSec, lineHeight: 1 }}>⋯</span>
                       </button>
                       <button onClick={() => setConfirmDeleteId(w.id)} aria-label="Delete session" style={{
-                        padding: '8px', background: 'transparent', border: `1px solid ${t.border}`,
-                        borderRadius: 8, cursor: 'pointer', color: '#DC2626', display: 'inline-flex',
-                        alignItems: 'center', justifyContent: 'center', fontFamily: FONT,
-                      }}><Icon C={Trash2} size={13} color="#DC2626" /></button>
+                        padding: '12px', minWidth: 44, minHeight: 44, background: 'transparent',
+                        border: `1px solid ${t.border}`, borderRadius: 8, cursor: 'pointer',
+                        color: '#DC2626', display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', fontFamily: FONT,
+                      }}><Icon C={Trash2} size={14} color="#DC2626" /></button>
                     </>
                   )}
                 </div>
@@ -2492,7 +2494,10 @@ function PasteParser({ onImport, lbl, inp }) {
 
     const hasExerciseContent = (line: string) => {
       const tokens = line.split(/[\s\d.+*×x@,()/_\-]+/i).filter(Boolean);
-      return tokens.some(tok => /^[a-z']/i.test(tok) && !UNIT_RE.test(tok));
+      // ≥3 chars filters out garbage like "Hi"/"OK"/"AM" that would otherwise
+      // become phantom complementary entries; legit exercises ("Run", "Row")
+      // are all ≥3 chars.
+      return tokens.some(tok => tok.length >= 3 && /^[a-z']/i.test(tok) && !UNIT_RE.test(tok));
     };
 
     const extractSetData = (line: string) => {
@@ -2604,12 +2609,24 @@ function PasteParser({ onImport, lbl, inp }) {
       // setLines is the per-set line count; explicitSets is "N×M" sets-count from
       // a single line. Prefer explicit when present (e.g. "Squats 3×8" alone).
       const sets = g.setLines > 1 ? g.setLines : (explicitSets ?? (g.setLines > 0 ? g.setLines : null));
-      const repVals = g.setData.map(d => d.reps).filter((v): v is number => v != null);
-      const reps = repVals.length ? Math.round(repVals.reduce((a, b) => a + b, 0) / repVals.length) : null;
-      const wtVals = g.setData.map(d => d.weight).filter((v): v is number => v != null);
-      const weight = wtVals.length ? Math.max(...wtVals) : null;
-      const distVals = g.setData.map(d => d.distance).filter((v): v is number => v != null);
-      const distance = distVals.length ? Math.max(...distVals) : null;
+      // Top-set semantics: pick the set with the heaviest weight (or longest
+      // distance) and report its reps. Avoids the pyramid bug where averaging
+      // reps across 60×5 / 80×5 / 100×3 invents a "100kg × 4 reps" set the
+      // user never actually performed.
+      const topByWeight = g.setData.reduce((best: any, d: any) => {
+        if (d.weight == null) return best;
+        if (best == null || d.weight > best.weight) return d;
+        return best;
+      }, null);
+      const topByDistance = g.setData.reduce((best: any, d: any) => {
+        if (d.distance == null) return best;
+        if (best == null || d.distance > best.distance) return d;
+        return best;
+      }, null);
+      const top = topByWeight ?? topByDistance ?? g.setData.find(d => d.reps != null) ?? null;
+      const weight = topByWeight?.weight ?? null;
+      const distance = topByDistance?.distance ?? null;
+      const reps = top?.reps ?? null;
       const displayRaw = g.setLines > 1 ? `${g.header} (${g.setLines} sets)` : g.header;
 
       if (g.match) {
